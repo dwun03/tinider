@@ -1,0 +1,206 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show rootBundle;
+
+import '../models/foodspot.dart';
+
+enum SwipeDirection { left, right, superLike }
+
+class MatchResult {
+  final FoodSpot spot;
+  final int totalScore;
+  final int likeCount;
+  final List<String> likedByMemberIds;
+  final bool isUnanimous;
+
+  const MatchResult({
+    required this.spot,
+    required this.totalScore,
+    required this.likeCount,
+    required this.likedByMemberIds,
+    required this.isUnanimous,
+  });
+}
+
+class QuickMatchState extends ChangeNotifier {
+  List<FoodSpot> _allSpots = [];
+  List<FoodSpot> _sessionDeck = [];
+  List<String> _memberIds = [];
+
+  // Tracks current card index per group member: { memberId: cardIndex }
+  final Map<String, int> _memberProgress = {};
+
+  // Tracks votes per spot: { spotId: { memberId: SwipeDirection } }
+  final Map<String, Map<String, SwipeDirection>> _swipes = {};
+
+  bool _isLoading = false;
+  String? _error;
+
+  // Getters
+  bool get isLoading => _isLoading;
+  String? get error => _error;
+  List<FoodSpot> get allSpots => List.unmodifiable(_allSpots);
+  List<FoodSpot> get sessionDeck => List.unmodifiable(_sessionDeck);
+  List<String> get memberIds => List.unmodifiable(_memberIds);
+
+  /// 1. Loads and parses the offline JSON asset into app state.
+  Future<void> loadDataset({
+    String assetPath = 'assets/data/food_dataset.json',
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final rawJson = await rootBundle.loadString(assetPath);
+      final Map<String, dynamic> decoded = json.decode(rawJson);
+      final List<dynamic> spotsJson = decoded['food_spots'] as List<dynamic>;
+
+      _allSpots = spotsJson
+          .map((item) => FoodSpot.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      _error = 'Failed to parse UST food spots dataset: $e';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// 2. Starts a paired/group swipe session with optional pre-filters.
+  void startGroupSession({
+    required List<String> groupMemberIds,
+    int? maxBudgetPhp,
+    int? maxWalkMinutes,
+    String? preferredGateKeyword,
+    bool shuffleDeck = true,
+  }) {
+    assert(
+      groupMemberIds.length >= 2,
+      'A group match requires at least 2 people.',
+    );
+
+    _memberIds = List.from(groupMemberIds);
+    _memberProgress.clear();
+    _swipes.clear();
+
+    for (final memberId in _memberIds) {
+      _memberProgress[memberId] = 0;
+    }
+
+    // Filter dataset based on group constraints
+    _sessionDeck = _allSpots.where((spot) {
+      if (maxBudgetPhp != null &&
+          spot.priceRangePhp.averageMeal > maxBudgetPhp) {
+        return false;
+      }
+      if (maxWalkMinutes != null && spot.walkingTimeMinutes > maxWalkMinutes) {
+        return false;
+      }
+      if (preferredGateKeyword != null &&
+          preferredGateKeyword.isNotEmpty &&
+          !spot.nearestGate.toLowerCase().contains(
+            preferredGateKeyword.toLowerCase(),
+          )) {
+        return false;
+      }
+      return true;
+    }).toList();
+
+    if (shuffleDeck) {
+      _sessionDeck.shuffle();
+    }
+
+    notifyListeners();
+  }
+
+  /// Returns the current FoodSpot card for a specific member, or null if done.
+  FoodSpot? currentCardFor(String memberId) {
+    final index = _memberProgress[memberId] ?? 0;
+    if (index >= _sessionDeck.length) return null;
+    return _sessionDeck[index];
+  }
+
+  /// Checks if a specific member has finished swiping the entire deck.
+  bool isMemberDone(String memberId) {
+    return (_memberProgress[memberId] ?? 0) >= _sessionDeck.length;
+  }
+
+  /// Checks if every member in the paired group has finished swiping.
+  bool get isSessionComplete {
+    if (_memberIds.isEmpty || _sessionDeck.isEmpty) return false;
+    return _memberIds.every(isMemberDone);
+  }
+
+  /// 3. Records a member's swipe on their current card and advances their deck.
+  void swipe({required String memberId, required SwipeDirection direction}) {
+    final currentSpot = currentCardFor(memberId);
+    if (currentSpot == null) return;
+
+    _swipes.putIfAbsent(currentSpot.id, () => {});
+    _swipes[currentSpot.id]![memberId] = direction;
+
+    _memberProgress[memberId] = (_memberProgress[memberId] ?? 0) + 1;
+    notifyListeners();
+  }
+
+  /// 4. Ranks all swiped spots and returns the leaderboard.
+  /// Scoring: right = +1, superLike = +2, left = 0.
+  List<MatchResult> getRankedMatches() {
+    final results = <MatchResult>[];
+
+    for (final spot in _sessionDeck) {
+      final votes = _swipes[spot.id] ?? {};
+      int score = 0;
+      final likedBy = <String>[];
+
+      votes.forEach((memberId, direction) {
+        if (direction == SwipeDirection.right) {
+          score += 1;
+          likedBy.add(memberId);
+        } else if (direction == SwipeDirection.superLike) {
+          score += 2;
+          likedBy.add(memberId);
+        }
+      });
+
+      results.add(
+        MatchResult(
+          spot: spot,
+          totalScore: score,
+          likeCount: likedBy.length,
+          likedByMemberIds: likedBy,
+          isUnanimous: likedBy.length == _memberIds.length,
+        ),
+      );
+    }
+
+    // Sort by highest score -> most unique likes -> shortest walk -> cheapest meal
+    results.sort((a, b) {
+      final scoreCompare = b.totalScore.compareTo(a.totalScore);
+      if (scoreCompare != 0) return scoreCompare;
+
+      final countCompare = b.likeCount.compareTo(a.likeCount);
+      if (countCompare != 0) return countCompare;
+
+      final walkCompare = a.spot.walkingTimeMinutes.compareTo(
+        b.spot.walkingTimeMinutes,
+      );
+      if (walkCompare != 0) return walkCompare;
+
+      return a.spot.priceRangePhp.averageMeal.compareTo(
+        b.spot.priceRangePhp.averageMeal,
+      );
+    });
+
+    return results;
+  }
+
+  /// Returns the single top matched spot (null if nobody swiped right on anything).
+  MatchResult? getFinalMatch() {
+    final ranked = getRankedMatches();
+    if (ranked.isEmpty || ranked.first.totalScore == 0) return null;
+    return ranked.first;
+  }
+}

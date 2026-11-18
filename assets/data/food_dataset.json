@@ -1,0 +1,723 @@
+{
+  "dataset_info": {
+    "title": "UST Campus Perimeter Food Spots Dataset",
+    "university": "University of Santo Tomas (UST), Sampaloc, Manila",
+    "currency": "PHP",
+    "last_updated": "2026-11",
+    "total_entries": 25,
+    "gates_reference": {
+      "Gate 1 & Gate 2": "España Boulevard (Main / Arch of the Centuries / The One Santo Tomas side)",
+      "Gate 3": "España Boulevard (Central / UST Hospital / Main Bldg side)",
+      "Gate 5 & Gate 6": "Governor Forbes / A.H. Lacson Avenue (UST Hospital / Carpark side)",
+      "Gate 7 & Gate 8": "P. Noval Street (Engineering / Architecture / Beato Angelico side)",
+      "Gate 10 & Gate 11": "Dapitan Street (TARC / Alfredo M. Velayo / Albertus Magnus side)",
+      "Gate 14": "Dapitan Street corner A.H. Lacson Avenue"
+    }
+  },
+  "food_spots": [
+    {
+      "id": "UST-FS-001",
+      "name": "Mang Tootz Food House",
+      "street_address": "P. Noval St. cor. J. Barlin St., Sampaloc, Manila",
+      "nearest_gate": "Gate 7 (P. Noval)",
+      "walking_time_minutes": 2,
+      "cuisine_type": [
+        "Filipino",
+        "Carinderia",
+        "Turo-Turo"
+      ],
+      "price_range_php": {
+        "min": 75,
+        "max": 130,
+        "average_meal": 95
+      },
+      "popular_items": [
+        "Banana Rhum-a",
+        "Kapampangan Sisig",
+        "Inihaw na Liempo",
+        "Lechon Kawali"
+      ],
+      "operating_hours": "09:00 - 21:00 (Mon-Sat)",
+      "tags": [
+        "budget",
+        "legendary",
+        "student-favorite",
+        "dessert"
+      ]
+    },
+    {
+      "id": "UST-FS-002",
+      "name": "Dimsum Treats (Juaning)",
+      "street_address": "1217 Juaning St. (off Dapitan St.), Sampaloc, Manila",
+      "nearest_gate": "Gate 11 (Dapitan)",
+      "walking_time_minutes": 3,
+      "cuisine_type": [
+        "Chinese-Filipino",
+        "Dimsum",
+        "Rice Meals"
+      ],
+      "price_range_php": {
+        "min": 65,
+        "max": 120,
+        "average_meal": 80
+      },
+      "popular_items": [
+        "4-pc Pork Siomai Rice",
+        "Beef Chao Fan",
+        "Special Chili Garlic Sauce"
+      ],
+      "operating_hours": "08:00 - 23:00 (Daily)",
+      "tags": [
+        "ultra-budget",
+        "quick-bite",
+        "student-staple"
+      ]
+    },
+    {
+      "id": "UST-FS-003",
+      "name": "Angkong Dimsum House",
+      "street_address": "Asturias St. near Dapitan St., Sampaloc, Manila",
+      "nearest_gate": "Gate 10 (Dapitan)",
+      "walking_time_minutes": 2,
+      "cuisine_type": [
+        "Chinese-Filipino",
+        "Dimsum",
+        "Noodles"
+      ],
+      "price_range_php": {
+        "min": 65,
+        "max": 125,
+        "average_meal": 85
+      },
+      "popular_items": [
+        "Siomai Rice",
+        "Hakaw",
+        "Beef Wanton Mami",
+        "Shark's Fin Dumpling"
+      ],
+      "operating_hours": "09:00 - 22:00 (Daily)",
+      "tags": [
+        "budget",
+        "quick-bite",
+        "dimsum"
+      ]
+    },
+    {
+      "id": "UST-FS-004",
+      "name": "Lovelite",
+      "street_address": "1224 Asturias St., Sampaloc, Manila",
+      "nearest_gate": "Gate 10 (Dapitan)",
+      "walking_time_minutes": 2,
+      "cuisine_type": [
+        "Filipino",
+        "Silog",
+        "Fruit Shakes"
+      ],
+      "price_range_php": {
+        "min": 75,
+        "max": 140,
+        "average_meal": 100
+      },
+      "popular_items": [
+        "Tapsilog",
+        "Porkchop with Gravy",
+        "Mango Graham Shake"
+      ],
+      "operating_hours": "08:00 - 21:00 (Mon-Sat)",
+      "tags": [
+        "budget",
+        "shakes",
+        "casual-hangout"
+      ]
+    },
+    {
+      "id": "UST-FS-005",
+      "name": "Santorini Korean Restaurant",
+      "street_address": "P. Noval St. near Dapitan St., Sampaloc, Manila",
+      "nearest_gate": "Gate 8 (P. Noval)",
+      "walking_time_minutes": 3,
+      "cuisine_type": [
+        "Korean"
+      ],
+      "price_range_php": {
+        "min": 130,
+        "max": 260,
+        "average_meal": 180
+      },
+      "popular_items": [
+        "Bibimbap",
+        "Rabokki",
+        "Kimchi Fried Rice",
+        "Pajeon"
+      ],
+      "operating_hours": "10:30 - 21:30 (Daily)",
+      "tags": [
+        "large-portions",
+        "barkada",
+        "korean"
+      ]
+    },
+    {
+      "id": "UST-FS-006",
+      "name": "Tiger Winx",
+      "street_address": "Concepcion St. / Dapitan Area, Sampaloc, Manila",
+      "nearest_gate": "Gate 11 (Dapitan)",
+      "walking_time_minutes": 4,
+      "cuisine_type": [
+        "American",
+        "Chicken Wings"
+      ],
+      "price_range_php": {
+        "min": 135,
+        "max": 250,
+        "average_meal": 175
+      },
+      "popular_items": [
+        "Salted Egg Wings",
+        "Garlic Parmesan Wings",
+        "Honey Sriracha Rice Meal"
+      ],
+      "operating_hours": "11:00 - 22:00 (Daily)",
+      "tags": [
+        "wings",
+        "barkada",
+        "comfort-food"
+      ]
+    },
+    {
+      "id": "UST-FS-007",
+      "name": "Chew York",
+      "street_address": "Asturias St., Sampaloc, Manila",
+      "nearest_gate": "Gate 10 (Dapitan)",
+      "walking_time_minutes": 2,
+      "cuisine_type": [
+        "Japanese",
+        "Rice Bowls"
+      ],
+      "price_range_php": {
+        "min": 110,
+        "max": 190,
+        "average_meal": 145
+      },
+      "popular_items": [
+        "Oyakudon",
+        "Katsudon",
+        "Gyudon",
+        "Chicken Karaage"
+      ],
+      "operating_hours": "10:00 - 21:00 (Mon-Sat)",
+      "tags": [
+        "japanese",
+        "rice-bowls",
+        "air-conditioned"
+      ]
+    },
+    {
+      "id": "UST-FS-008",
+      "name": "La Frontera Tex-Mex",
+      "street_address": "Asturias St., Sampaloc, Manila",
+      "nearest_gate": "Gate 10 (Dapitan)",
+      "walking_time_minutes": 3,
+      "cuisine_type": [
+        "Mexican",
+        "Tex-Mex"
+      ],
+      "price_range_php": {
+        "min": 120,
+        "max": 230,
+        "average_meal": 165
+      },
+      "popular_items": [
+        "Beef Burrito",
+        "Birria Tacos",
+        "Loaded Nachos",
+        "Quesadilla"
+      ],
+      "operating_hours": "11:00 - 21:00 (Mon-Sat)",
+      "tags": [
+        "mexican",
+        "merienda",
+        "savory"
+      ]
+    },
+    {
+      "id": "UST-FS-009",
+      "name": "Dimsum Kitchen (Dapitan)",
+      "street_address": "Dapitan St. near Antonio St., Sampaloc, Manila",
+      "nearest_gate": "Gate 11 (Dapitan)",
+      "walking_time_minutes": 3,
+      "cuisine_type": [
+        "Chinese-Filipino",
+        "Rice Toppings"
+      ],
+      "price_range_php": {
+        "min": 85,
+        "max": 150,
+        "average_meal": 110
+      },
+      "popular_items": [
+        "Special Crunchy Porkchop Rice",
+        "Sweet & Sour Fish",
+        "Dimsum Platter"
+      ],
+      "operating_hours": "09:30 - 21:30 (Daily)",
+      "tags": [
+        "generous-serving",
+        "budget",
+        "rice-toppings"
+      ]
+    },
+    {
+      "id": "UST-FS-010",
+      "name": "Tres Marias Pizza & Pasta",
+      "street_address": "Dapitan St. cor. P. Noval St., Sampaloc, Manila",
+      "nearest_gate": "Gate 8 (P. Noval) / Gate 10 (Dapitan)",
+      "walking_time_minutes": 2,
+      "cuisine_type": [
+        "Italian-Filipino",
+        "Pasta",
+        "Pizza"
+      ],
+      "price_range_php": {
+        "min": 110,
+        "max": 220,
+        "average_meal": 150
+      },
+      "popular_items": [
+        "Creamy Carbonara",
+        "Baked Lasagna",
+        "All-Meat Pizza"
+      ],
+      "operating_hours": "10:00 - 21:00 (Daily)",
+      "tags": [
+        "pasta",
+        "group-sharing",
+        "casual"
+      ]
+    },
+    {
+      "id": "UST-FS-011",
+      "name": "Greens Carinderia",
+      "street_address": "España Blvd. beside The One Santo Tomas, Sampaloc, Manila",
+      "nearest_gate": "Gate 2 (España)",
+      "walking_time_minutes": 1,
+      "cuisine_type": [
+        "Filipino",
+        "Carinderia"
+      ],
+      "price_range_php": {
+        "min": 75,
+        "max": 120,
+        "average_meal": 85
+      },
+      "popular_items": [
+        "Kare-Kare (MWF)",
+        "Pork Sisig",
+        "Lumpiang Shanghai",
+        "2-Ulam Combo"
+      ],
+      "operating_hours": "07:00 - 20:00 (Mon-Sat)",
+      "tags": [
+        "ultra-budget",
+        "closest-to-gate",
+        "home-cooked"
+      ]
+    },
+    {
+      "id": "UST-FS-012",
+      "name": "Sinangag Express (SEx Dapitan)",
+      "street_address": "Dapitan St. cor. Gelinos St., Sampaloc, Manila",
+      "nearest_gate": "Gate 11 (Dapitan)",
+      "walking_time_minutes": 2,
+      "cuisine_type": [
+        "Filipino",
+        "Silog",
+        "24-Hour"
+      ],
+      "price_range_php": {
+        "min": 85,
+        "max": 155,
+        "average_meal": 115
+      },
+      "popular_items": [
+        "Tapsilog",
+        "Bangsilog",
+        "Tosilog",
+        "Extra Garlic Rice"
+      ],
+      "operating_hours": "24 Hours (Daily)",
+      "tags": [
+        "24-hours",
+        "breakfast",
+        "late-night",
+        "study-fuel"
+      ]
+    },
+    {
+      "id": "UST-FS-013",
+      "name": "Ilar's Tapsilogan",
+      "street_address": "1200 A.H. Lacson Ave., Sampaloc, Manila",
+      "nearest_gate": "Gate 6 (Lacson) / Gate 14 (Dapitan-Lacson)",
+      "walking_time_minutes": 3,
+      "cuisine_type": [
+        "Filipino",
+        "Silog"
+      ],
+      "price_range_php": {
+        "min": 80,
+        "max": 145,
+        "average_meal": 105
+      },
+      "popular_items": [
+        "Tapsilog",
+        "Lechon Kawali Silog",
+        "Pork Sisig"
+      ],
+      "operating_hours": "06:00 - 23:00 (Daily)",
+      "tags": [
+        "budget",
+        "silog",
+        "lacson-side"
+      ]
+    },
+    {
+      "id": "UST-FS-014",
+      "name": "24 Chicken (Dapitan)",
+      "street_address": "Dapitan St. near Antonio St., Sampaloc, Manila",
+      "nearest_gate": "Gate 11 (Dapitan)",
+      "walking_time_minutes": 3,
+      "cuisine_type": [
+        "Korean-Style Fried Chicken"
+      ],
+      "price_range_php": {
+        "min": 115,
+        "max": 240,
+        "average_meal": 135
+      },
+      "popular_items": [
+        "Jack Daniels Boneless Chicken",
+        "Yangnyeom Rice Meal",
+        "Snow Cheese"
+      ],
+      "operating_hours": "10:00 - 23:00 (Daily)",
+      "tags": [
+        "boneless-chicken",
+        "takeout-friendly",
+        "popular"
+      ]
+    },
+    {
+      "id": "UST-FS-015",
+      "name": "Yeoubi Cafe",
+      "street_address": "Asturias St. / Dapitan Area, Sampaloc, Manila",
+      "nearest_gate": "Gate 10 (Dapitan)",
+      "walking_time_minutes": 3,
+      "cuisine_type": [
+        "Cafe",
+        "Korean Pastries",
+        "Coffee"
+      ],
+      "price_range_php": {
+        "min": 120,
+        "max": 240,
+        "average_meal": 170
+      },
+      "popular_items": [
+        "Spanish Latte",
+        "Croffles",
+        "Matcha Einspanner"
+      ],
+      "operating_hours": "10:00 - 22:00 (Daily)",
+      "tags": [
+        "aesthetic",
+        "study-cafe",
+        "wifi",
+        "air-conditioned"
+      ]
+    },
+    {
+      "id": "UST-FS-016",
+      "name": "Cow-Wow Sausage Haus",
+      "street_address": "P. Noval St., Sampaloc, Manila",
+      "nearest_gate": "Gate 7 (P. Noval)",
+      "walking_time_minutes": 2,
+      "cuisine_type": [
+        "German-Filipino",
+        "Sausages",
+        "Rice Meals"
+      ],
+      "price_range_php": {
+        "min": 95,
+        "max": 165,
+        "average_meal": 125
+      },
+      "popular_items": [
+        "Hungarian Sausage with Mashed Potato",
+        "Schublig Rice Meal",
+        "Cheesy Franks"
+      ],
+      "operating_hours": "10:00 - 21:00 (Mon-Sat)",
+      "tags": [
+        "sausages",
+        "customizable-sides",
+        "student-friendly"
+      ]
+    },
+    {
+      "id": "UST-FS-017",
+      "name": "Lopez Canteen",
+      "street_address": "P. Campa St. near España Blvd., Sampaloc, Manila",
+      "nearest_gate": "Gate 1 (España)",
+      "walking_time_minutes": 3,
+      "cuisine_type": [
+        "Filipino",
+        "Traditional Carinderia"
+      ],
+      "price_range_php": {
+        "min": 75,
+        "max": 130,
+        "average_meal": 95
+      },
+      "popular_items": [
+        "Beef Caldereta",
+        "Menudo",
+        "Sinigang na Baboy",
+        "Dinuguan"
+      ],
+      "operating_hours": "07:00 - 20:00 (Mon-Sat)",
+      "tags": [
+        "historic",
+        "home-cooked",
+        "budget"
+      ]
+    },
+    {
+      "id": "UST-FS-018",
+      "name": "J&G Foodhouse",
+      "street_address": "P. Noval St., Sampaloc, Manila",
+      "nearest_gate": "Gate 7 (P. Noval)",
+      "walking_time_minutes": 2,
+      "cuisine_type": [
+        "Japanese-Filipino",
+        "Cooked-to-Order"
+      ],
+      "price_range_php": {
+        "min": 90,
+        "max": 160,
+        "average_meal": 120
+      },
+      "popular_items": [
+        "Tonkatsu Rice Bowl",
+        "Chicken Teriyaki",
+        "Pork Sisig"
+      ],
+      "operating_hours": "10:00 - 21:00 (Mon-Sat)",
+      "tags": [
+        "cooked-to-order",
+        "budget",
+        "warm-meals"
+      ]
+    },
+    {
+      "id": "UST-FS-019",
+      "name": "iChill Theater Cafe",
+      "street_address": "1125 Dos Castillas St., Sampaloc, Manila",
+      "nearest_gate": "Gate 5 (Lacson)",
+      "walking_time_minutes": 4,
+      "cuisine_type": [
+        "Cafe",
+        "Comfort Food",
+        "Pasta"
+      ],
+      "price_range_php": {
+        "min": 130,
+        "max": 250,
+        "average_meal": 180
+      },
+      "popular_items": [
+        "Tuna Pesto",
+        "Nachos Grande",
+        "Iced Mocha",
+        "Clubhouse Sandwich"
+      ],
+      "operating_hours": "12:00 - 23:00 (Tue-Sun)",
+      "tags": [
+        "hangout",
+        "open-mic",
+        "board-games",
+        "study-friendly"
+      ]
+    },
+    {
+      "id": "UST-FS-020",
+      "name": "The One Santo Tomas Food Court",
+      "street_address": "España Blvd. cor. P. Noval St., Sampaloc, Manila",
+      "nearest_gate": "Gate 2 (España) / Gate 7 (P. Noval)",
+      "walking_time_minutes": 1,
+      "cuisine_type": [
+        "Food Court",
+        "Snacks",
+        "Fast Casual"
+      ],
+      "price_range_php": {
+        "min": 65,
+        "max": 180,
+        "average_meal": 120
+      },
+      "popular_items": [
+        "Potato Corner Fries",
+        "Turon & Kakanin",
+        "Rice Bowls",
+        "Milk Tea"
+      ],
+      "operating_hours": "08:00 - 21:00 (Daily)",
+      "tags": [
+        "air-conditioned",
+        "variety",
+        "closest-to-gate",
+        "merienda"
+      ]
+    },
+    {
+      "id": "UST-FS-021",
+      "name": "Funhan Mart (España)",
+      "street_address": "España Blvd. near P. Noval St., Sampaloc, Manila",
+      "nearest_gate": "Gate 2 (España)",
+      "walking_time_minutes": 2,
+      "cuisine_type": [
+        "Korean Convenience Store",
+        "Ramyeon"
+      ],
+      "price_range_php": {
+        "min": 75,
+        "max": 160,
+        "average_meal": 115
+      },
+      "popular_items": [
+        "Self-Cooked Jin Ramen with Egg & Cheese",
+        "Tteokbokki Cup",
+        "Kimbap"
+      ],
+      "operating_hours": "24 Hours (Daily)",
+      "tags": [
+        "24-hours",
+        "korean-mart",
+        "late-night",
+        "quick-bite"
+      ]
+    },
+    {
+      "id": "UST-FS-022",
+      "name": "I. Delos Reyes Night Street Food Market",
+      "street_address": "I. Delos Reyes St. cor. P. Noval St., Sampaloc, Manila",
+      "nearest_gate": "Gate 7 (P. Noval)",
+      "walking_time_minutes": 3,
+      "cuisine_type": [
+        "Filipino Street Food",
+        "Grilled",
+        "Snacks"
+      ],
+      "price_range_php": {
+        "min": 25,
+        "max": 95,
+        "average_meal": 60
+      },
+      "popular_items": [
+        "Isaw & Betamax",
+        "Kwek-Kwek",
+        "Fishball & Kikiam",
+        "Pares Mami"
+      ],
+      "operating_hours": "17:00 - 23:00 (Mon-Sat)",
+      "tags": [
+        "street-food",
+        "ultra-budget",
+        "merienda",
+        "evening-only"
+      ]
+    },
+    {
+      "id": "UST-FS-023",
+      "name": "Midnight Coffee",
+      "street_address": "Dapitan Area / Sampaloc, Manila",
+      "nearest_gate": "Gate 11 (Dapitan)",
+      "walking_time_minutes": 4,
+      "cuisine_type": [
+        "Specialty Coffee",
+        "Pastries"
+      ],
+      "price_range_php": {
+        "min": 110,
+        "max": 200,
+        "average_meal": 145
+      },
+      "popular_items": [
+        "Sea Salt Latte",
+        "Vietnamese Iced Coffee",
+        "Butter Croissant"
+      ],
+      "operating_hours": "10:00 - 02:00 (Daily)",
+      "tags": [
+        "late-night",
+        "study-cafe",
+        "coffee"
+      ]
+    },
+    {
+      "id": "UST-FS-024",
+      "name": "James & Che BBQ House",
+      "street_address": "Sampaloc (near Dapitan / Lacson perimeter), Manila",
+      "nearest_gate": "Gate 14 (Dapitan-Lacson)",
+      "walking_time_minutes": 5,
+      "cuisine_type": [
+        "Filipino BBQ",
+        "Grilled",
+        "Pulutan"
+      ],
+      "price_range_php": {
+        "min": 100,
+        "max": 220,
+        "average_meal": 150
+      },
+      "popular_items": [
+        "Pork BBQ Skewers",
+        "Grilled Liempo",
+        "Sizzling Sisig"
+      ],
+      "operating_hours": "16:00 - 01:00 (Daily)",
+      "tags": [
+        "dinner",
+        "barkada",
+        "grilled"
+      ]
+    },
+    {
+      "id": "UST-FS-025",
+      "name": "Jollibee (España - P. Noval)",
+      "street_address": "España Blvd. cor. P. Noval St., Sampaloc, Manila",
+      "nearest_gate": "Gate 2 (España) / Gate 7 (P. Noval)",
+      "walking_time_minutes": 1,
+      "cuisine_type": [
+        "Fast Food",
+        "Filipino"
+      ],
+      "price_range_php": {
+        "min": 89,
+        "max": 195,
+        "average_meal": 135
+      },
+      "popular_items": [
+        "1-pc Chickenjoy with Rice",
+        "Jolly Spaghetti",
+        "Yumburger"
+      ],
+      "operating_hours": "24 Hours (Daily)",
+      "tags": [
+        "24-hours",
+        "fast-food",
+        "air-conditioned",
+        "closest-to-gate"
+      ]
+    }
+  ]
+}
