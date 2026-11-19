@@ -31,6 +31,21 @@ Students walking out of campus buildings (like St. Raymund's or Roque Ruaño) of
 * **Data & State:** Local JSON (Offline-first approach), `shared_preferences`
 * **Design:** Figma
 
+## Firebase group sessions
+
+Firestore stores online room IDs, participant progress, swipe votes, and ranked
+results only. Food spot records remain in `assets/data/food_dataset.json` and
+are not uploaded. The pass-the-phone mode continues to work locally.
+
+To enable online rooms:
+
+1. Create a Firebase project and register the Android/iOS app IDs.
+2. Install the Firebase CLI and FlutterFire CLI, then run
+   `flutterfire configure --project=<your-project-id>` from the project root.
+3. Enable **Anonymous** sign-in and create a Cloud Firestore database in the
+   Firebase console.
+4. Deploy the room access rules with `firebase deploy --only firestore:rules`.
+
 ## 🐯 The Team 
 * **Antonio** - Project Manager / Lead
 * **Dwayne** - Frontend Developer

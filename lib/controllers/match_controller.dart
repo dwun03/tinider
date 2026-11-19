@@ -172,15 +172,26 @@ class QuickMatchState extends ChangeNotifier {
 
   /// 4. Ranks all swiped spots and returns the leaderboard.
   /// Scoring: right = +1, superLike = +2, left = 0.
-  List<MatchResult> getRankedMatches() {
+  List<MatchResult> getRankedMatches() => rankVotes(
+    spots: _sessionDeck,
+    memberIds: _memberIds,
+    votesBySpot: _swipes,
+  );
+
+  static List<MatchResult> rankVotes({
+    required List<FoodSpot> spots,
+    required List<String> memberIds,
+    required Map<String, Map<String, SwipeDirection>> votesBySpot,
+  }) {
     final results = <MatchResult>[];
 
-    for (final spot in _sessionDeck) {
-      final votes = _swipes[spot.id] ?? {};
+    for (final spot in spots) {
+      final votes = votesBySpot[spot.id] ?? {};
       int score = 0;
       final likedBy = <String>[];
 
-      votes.forEach((memberId, direction) {
+      for (final memberId in memberIds) {
+        final direction = votes[memberId];
         if (direction == SwipeDirection.right) {
           score += 1;
           likedBy.add(memberId);
@@ -188,7 +199,7 @@ class QuickMatchState extends ChangeNotifier {
           score += 2;
           likedBy.add(memberId);
         }
-      });
+      }
 
       results.add(
         MatchResult(
@@ -196,7 +207,7 @@ class QuickMatchState extends ChangeNotifier {
           totalScore: score,
           likeCount: likedBy.length,
           likedByMemberIds: likedBy,
-          isUnanimous: likedBy.length == _memberIds.length,
+          isUnanimous: likedBy.length == memberIds.length,
         ),
       );
     }
