@@ -32,10 +32,10 @@ Students walking out of campus buildings (like St. Raymund's or Roque Ruaño) of
 * **Design:** Figma
 
 ## 🐯 The Team 
-* **Antonio** - Project Manager / Lead
+* **Anton** - Project Manager / Lead
 * **Dwayne** - Frontend Developer
 * **Marc** - Backend & Logic Developer
-* **Juan ** - UI/UX Designer
+* **Juan** - UI/UX Designer
 * **Jan** - QA & User Testing Lead
 
 ## Getting Started
