@@ -341,6 +341,7 @@ class _RoomCodeScreenState extends State<RoomCodeScreen> {
                             roomCode: code
                                 .map((digit) => digit.toString())
                                 .join(),
+                            memberIds: const ['you', 'friend'],
                           ),
                         ),
                       )
@@ -576,6 +577,10 @@ class _PassPhoneScreenState extends State<PassPhoneScreen> {
                       budget: widget.budget,
                       isGroup: true,
                       roomCode: 'OFFLINE',
+                      memberIds: List.generate(
+                        players,
+                        (index) => index == 0 ? 'you' : 'player_${index + 1}',
+                      ),
                     ),
                   ),
                 ),

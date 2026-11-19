@@ -20,9 +20,9 @@ Students walking out of campus buildings (like St. Raymund's or Roque Ruaño) of
 * **Gate & Budget Filter:** Filters food spots based on your nearest UST exit (Dapitan, P. Noval, Lacson, or España) and your budget tier (Tipid <₱100, Regular ₱100-₱180, Deserve 'Ko To >₱180).
 * **Craving Swiper:** A gesture-based card deck. Swipe right to add a spot to your **Cravings List**, swipe left to pass.
 * **"Bahala Na" Auto-Pick:** A fallback edge-case mechanism. If a user rejects every card in the deck, the app forcibly assigns a meal to prevent endless looping.
-* **Quick Match Logic:** 
-  * *Solo:* Locks in a choice once 3 items are liked.
-  * *Group:* Supports "Pass-the-Phone" or online 4-digit room codes to instantly match when two users swipe right on the same stall.
+* **Quick Match Logic:**
+  * *Solo:* Ranks liked spots after the full filtered deck is swiped; if none are liked, the highest-ranked spot is selected as a fallback.
+  * *Group:* Tracks each participant's votes on the same deck. Right swipes score 1 point, super-likes score 2, and ties favor more likes, shorter walks, then cheaper meals.
 * **Offline WalkCard:** Displays walking directions, operating hours, and landmarks instantly, powered by local JSON data to survive campus dead zones.
 
 ## Tech Stack

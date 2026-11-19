@@ -1,18 +1,18 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
+import '../controllers/match_controller.dart';
 import '../models/foodspot.dart';
 import '../theme/tinider_theme.dart';
 import '../widgets/food_image_placeholder.dart';
 import '../widgets/tinider_widgets.dart';
+import 'setup_screens.dart';
 
 class FoodSwipeScreen extends StatefulWidget {
   final String gate;
   final String budget;
   final bool isGroup;
   final String? roomCode;
+  final List<String>? memberIds;
 
   const FoodSwipeScreen({
     super.key,
@@ -20,6 +20,7 @@ class FoodSwipeScreen extends StatefulWidget {
     required this.budget,
     this.isGroup = false,
     this.roomCode,
+    this.memberIds,
   });
 
   @override
@@ -27,10 +28,15 @@ class FoodSwipeScreen extends StatefulWidget {
 }
 
 class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
-  int index = 0;
+  final QuickMatchState _matchState = QuickMatchState();
+  int activeMemberIndex = 0;
   List<FoodSpot> cards = [];
+  List<String> _memberIds = [];
   bool isLoading = true;
-  FoodSpot? likedCard;
+  double _dragOffset = 0;
+
+  static const double _swipeDistanceThreshold = 100;
+  static const double _swipeVelocityThreshold = 600;
 
   @override
   void initState() {
@@ -38,21 +44,40 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
     _loadCards();
   }
 
+  @override
+  void dispose() {
+    _matchState.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadCards() async {
     try {
-      final rawJson = await rootBundle.loadString(
-        'assets/data/food_dataset.json',
+      await _matchState.loadDataset();
+      final loadError = _matchState.error;
+      if (loadError != null) {
+        throw StateError(loadError);
+      }
+
+      final budgetRange = switch (widget.budget) {
+        'Thrifty' => (min: null, max: 99),
+        'Regular' => (min: 100, max: 180),
+        'Special Treat' => (min: 181, max: null),
+        _ => (min: null, max: null),
+      };
+      _memberIds =
+          widget.memberIds ??
+          (widget.isGroup ? const ['you', 'friend'] : const ['you']);
+      _matchState.startGroupSession(
+        groupMemberIds: _memberIds,
+        minBudgetPhp: budgetRange.min,
+        maxBudgetPhp: budgetRange.max,
+        preferredGateKeyword: widget.gate,
+        shuffleDeck: false,
       );
-      final decoded = json.decode(rawJson) as Map<String, dynamic>;
-      final allSpots = (decoded['food_spots'] as List)
-          .map((item) => FoodSpot.fromJson(item as Map<String, dynamic>))
-          .where(_matchesGateAndBudget)
-          .toList();
-      allSpots.shuffle();
 
       if (!mounted) return;
       setState(() {
-        cards = allSpots.take(3).toList();
+        cards = _matchState.sessionDeck;
         isLoading = false;
       });
     } catch (error) {
@@ -64,43 +89,55 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
     }
   }
 
-  bool _matchesGateAndBudget(FoodSpot spot) {
-    final gateMatches = spot.nearestGate.toLowerCase().contains(
-      widget.gate.toLowerCase(),
+  void nextCard(SwipeDirection direction) {
+    _matchState.swipe(
+      memberId: _memberIds[activeMemberIndex],
+      direction: direction,
     );
-    if (!gateMatches) return false;
 
-    final average = spot.priceRangePhp.averageMeal;
-    switch (widget.budget) {
-      case 'Thrifty':
-        return average < 100;
-      case 'Regular':
-        return average >= 100 && average <= 180;
-      case 'Special Treat':
-        return average > 180;
-      default:
-        return true;
+    if (!_matchState.isMemberDone(_memberIds[activeMemberIndex])) {
+      setState(() {});
+      return;
     }
-  }
 
-  void nextCard(bool liked) {
-    final current = cards[index];
-    if (liked) likedCard ??= current;
+    if (activeMemberIndex < _memberIds.length - 1) {
+      setState(() {
+        activeMemberIndex++;
+      });
+      return;
+    }
 
-    if (index >= cards.length - 1) {
+    final rankedMatches = _matchState.getRankedMatches();
+    if (rankedMatches.isNotEmpty) {
+      final match = _matchState.getFinalMatch() ?? rankedMatches.first;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (_) => MatchScreen(
             gate: widget.gate,
             group: widget.isGroup,
-            spot: likedCard ?? cards.first,
+            spot: match.spot,
           ),
         ),
       );
-    } else {
-      setState(() => index++);
     }
+  }
+
+  void _handleHorizontalDragEnd(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    final direction = _dragOffset.abs() >= _swipeDistanceThreshold
+        ? (_dragOffset > 0 ? SwipeDirection.right : SwipeDirection.left)
+        : velocity.abs() >= _swipeVelocityThreshold
+        ? (velocity > 0 ? SwipeDirection.right : SwipeDirection.left)
+        : null;
+
+    if (direction == null) {
+      setState(() => _dragOffset = 0);
+      return;
+    }
+
+    _dragOffset = 0;
+    nextCard(direction);
   }
 
   @override
@@ -149,8 +186,9 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
       );
     }
 
-    final card = cards[index];
-    final progress = index + 1;
+    final memberId = _memberIds[activeMemberIndex];
+    final card = _matchState.currentCardFor(memberId)!;
+    final progress = _matchState.progressFor(memberId) + 1;
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -170,28 +208,17 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
               ),
               const SizedBox(height: 24),
               if (widget.isGroup) ...[
-                Row(
-                  children: [
-                    Expanded(
-                      child: _PlayerScore(
-                        label: 'You',
-                        score: '${progress * 4} / 12',
-                        active: true,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _PlayerScore(
-                        label: 'Friend',
-                        score: '${progress * 3} / 12',
-                        active: false,
-                      ),
-                    ),
-                  ],
+                Text(
+                  '${_memberLabel(activeMemberIndex)} · $progress/${cards.length}',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    color: TiniderColors.brown,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 const Text(
-                  "It's a match when you both swipe right.",
+                  'Take turns swiping the same food spots.',
                   style: TextStyle(fontSize: 15, color: TiniderColors.muted),
                 ),
                 const SizedBox(height: 16),
@@ -220,91 +247,123 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
                 const SizedBox(height: 12),
               ],
               Expanded(
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color:
-                        card.cuisineType.any(
-                          (cuisine) => cuisine.toLowerCase().contains('dimsum'),
-                        )
-                        ? TiniderColors.mint
-                        : TiniderColors.yellow,
-                    borderRadius: BorderRadius.circular(34),
-                    border: Border.all(color: TiniderColors.brown, width: 4),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: TiniderColors.brown,
-                        offset: Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(30),
-                          ),
-                          child: FoodImagePlaceholder(spot: card),
-                        ),
-                      ),
-                      Container(
+                child: GestureDetector(
+                  onHorizontalDragStart: (_) => _dragOffset = 0,
+                  onHorizontalDragUpdate: (details) {
+                    setState(() => _dragOffset += details.delta.dx);
+                  },
+                  onHorizontalDragEnd: _handleHorizontalDragEnd,
+                  onHorizontalDragCancel: () {
+                    setState(() => _dragOffset = 0);
+                  },
+                  child: Transform.translate(
+                    offset: Offset(_dragOffset, 0),
+                    child: Transform.rotate(
+                      angle:
+                          _dragOffset / MediaQuery.sizeOf(context).width * 0.25,
+                      child: Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.fromLTRB(22, 18, 22, 16),
-                        decoration: const BoxDecoration(
-                          color: TiniderColors.cream,
-                          borderRadius: BorderRadius.vertical(
-                            bottom: Radius.circular(30),
+                        decoration: BoxDecoration(
+                          color:
+                              card.cuisineType.any(
+                                (cuisine) =>
+                                    cuisine.toLowerCase().contains('dimsum'),
+                              )
+                              ? TiniderColors.mint
+                              : TiniderColors.yellow,
+                          borderRadius: BorderRadius.circular(34),
+                          border: Border.all(
+                            color: TiniderColors.brown,
+                            width: 4,
                           ),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: TiniderColors.brown,
+                              offset: Offset(0, 8),
+                            ),
+                          ],
                         ),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    card.name.replaceAll(' (Juaning)', ''),
-                                    style: const TextStyle(
-                                      fontSize: 29,
-                                      fontWeight: FontWeight.w900,
-                                      color: TiniderColors.brown,
-                                    ),
-                                  ),
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(30),
                                 ),
-                                Text(
-                                  '₱${card.priceRangePhp.averageMeal}',
-                                  style: const TextStyle(
-                                    fontSize: 25,
-                                    fontWeight: FontWeight.w900,
-                                    color: TiniderColors.brown,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 5),
-                            Text(
-                              card.popularItems.isNotEmpty
-                                  ? card.popularItems.first
-                                  : card.cuisineType.join(', '),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                color: TiniderColors.muted,
+                                child: FoodImagePlaceholder(spot: card),
                               ),
                             ),
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                _Chip('${card.walkingTimeMinutes} min walk'),
-                                const SizedBox(width: 8),
-                                _Chip('Near ${widget.gate}'),
-                              ],
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.fromLTRB(
+                                22,
+                                18,
+                                22,
+                                16,
+                              ),
+                              decoration: const BoxDecoration(
+                                color: TiniderColors.cream,
+                                borderRadius: BorderRadius.vertical(
+                                  bottom: Radius.circular(30),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          card.name.replaceAll(
+                                            ' (Juaning)',
+                                            '',
+                                          ),
+                                          style: const TextStyle(
+                                            fontSize: 29,
+                                            fontWeight: FontWeight.w900,
+                                            color: TiniderColors.brown,
+                                          ),
+                                        ),
+                                      ),
+                                      Text(
+                                        '₱${card.priceRangePhp.averageMeal}',
+                                        style: const TextStyle(
+                                          fontSize: 25,
+                                          fontWeight: FontWeight.w900,
+                                          color: TiniderColors.brown,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 5),
+                                  Text(
+                                    card.popularItems.isNotEmpty
+                                        ? card.popularItems.first
+                                        : card.cuisineType.join(', '),
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      color: TiniderColors.muted,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      _Chip(
+                                        '${card.walkingTimeMinutes} min walk',
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _Chip('Near ${widget.gate}'),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -316,7 +375,7 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
                       label: 'Pass',
                       icon: Icons.close,
                       hint: 'Swipe left to pass',
-                      onTap: () => nextCard(false),
+                      onTap: () => nextCard(SwipeDirection.left),
                       yellow: false,
                     ),
                   ),
@@ -326,7 +385,7 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
                       label: 'Crave',
                       icon: Icons.favorite_border,
                       hint: 'Swipe right to like',
-                      onTap: () => nextCard(true),
+                      onTap: () => nextCard(SwipeDirection.right),
                       yellow: true,
                     ),
                   ),
@@ -338,51 +397,11 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
       ),
     );
   }
-}
 
-class _PlayerScore extends StatelessWidget {
-  final String label;
-  final String score;
-  final bool active;
-
-  const _PlayerScore({
-    required this.label,
-    required this.score,
-    required this.active,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 52,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: active ? TiniderColors.yellow : TiniderColors.cream,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: TiniderColors.brown, width: 3),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              color: TiniderColors.brown,
-            ),
-          ),
-          Text(
-            score,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              color: TiniderColors.brown,
-            ),
-          ),
-        ],
-      ),
-    );
+  String _memberLabel(int memberIndex) {
+    if (_memberIds[memberIndex] == 'you') return 'You';
+    if (_memberIds[memberIndex] == 'friend') return 'Friend';
+    return 'Player ${memberIndex + 1}';
   }
 }
 
@@ -762,8 +781,16 @@ class WalkCardScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               TiniderPrimaryButton(
-                label: 'Proceed to food spot',
-                onPressed: () {},
+                label: 'Done',
+                onPressed: () {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const WhereAtScreen(),
+                    ),
+                    (route) => false,
+                  );
+                },
               ),
             ],
           ),
