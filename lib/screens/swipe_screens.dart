@@ -785,9 +785,7 @@ class WalkCardScreen extends StatelessWidget {
                 onPressed: () {
                   Navigator.pushAndRemoveUntil(
                     context,
-                    MaterialPageRoute(
-                      builder: (_) => const WhereAtScreen(),
-                    ),
+                    MaterialPageRoute(builder: (_) => const WhereAtScreen()),
                     (route) => false,
                   );
                 },
