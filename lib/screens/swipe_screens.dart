@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../controllers/food_swipe_controller.dart';
 import '../controllers/match_controller.dart';
 import '../models/foodspot.dart';
-import '../services/firebase_group_session_service.dart';
 import '../theme/tinider_theme.dart';
 import '../widgets/food_image_placeholder.dart';
 import '../widgets/tinider_widgets.dart';
@@ -33,195 +33,52 @@ class FoodSwipeScreen extends StatefulWidget {
 }
 
 class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
-  final QuickMatchState _matchState = QuickMatchState();
-  final FirebaseGroupSessionService _groupSessionService =
-      FirebaseGroupSessionService();
-  int activeMemberIndex = 0;
-  List<FoodSpot> cards = [];
-  List<String> _memberIds = [];
-  bool isLoading = true;
-  bool _isSubmitting = false;
-  bool _waitingForResults = false;
+  late final FoodSwipeController _controller;
   bool _resultNavigationStarted = false;
-  String? _firebaseError;
   double _dragOffset = 0;
-  StreamSubscription<FirebaseGroupResults?>? _resultsSubscription;
 
   static const double _swipeDistanceThreshold = 100;
   static const double _swipeVelocityThreshold = 600;
-  bool get _isOnlineGroup =>
-      widget.isGroup && widget.roomCode != null && widget.roomCode != 'OFFLINE';
 
   @override
   void initState() {
     super.initState();
-    _loadCards();
+    _controller = FoodSwipeController(
+      gate: widget.gate,
+      budget: widget.budget,
+      isGroup: widget.isGroup,
+      roomCode: widget.roomCode,
+      memberIds: widget.memberIds,
+      onlineMemberId: widget.onlineMemberId,
+    )..addListener(_handleControllerChanged);
+    unawaited(_controller.loadCards());
   }
 
   @override
   void dispose() {
-    _resultsSubscription?.cancel();
-    _matchState.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
-  Future<void> _loadCards() async {
-    try {
-      await _matchState.loadDataset();
-      final loadError = _matchState.error;
-      if (loadError != null) {
-        throw StateError(loadError);
-      }
+  void _handleControllerChanged() {
+    if (!mounted) return;
+    setState(() {});
 
-      final budgetRange = switch (widget.budget) {
-        'Thrifty' => (min: null, max: 99),
-        'Regular' => (min: 100, max: 180),
-        'Special Treat' => (min: 181, max: null),
-        _ => (min: null, max: null),
-      };
-      if (_isOnlineGroup) {
-        final onlineMemberId = widget.onlineMemberId;
-        if (onlineMemberId == null) {
-          throw StateError('The Firebase room member ID is missing.');
-        }
-        _memberIds = [onlineMemberId];
-      } else {
-        _memberIds =
-            widget.memberIds ??
-            (widget.isGroup ? const ['you', 'friend'] : const ['you']);
-      }
-      _matchState.startGroupSession(
-        groupMemberIds: _memberIds,
-        minBudgetPhp: budgetRange.min,
-        maxBudgetPhp: budgetRange.max,
-        preferredGateKeyword: widget.gate,
-        shuffleDeck: false,
-      );
-
-      if (!mounted) return;
-      setState(() {
-        cards = _matchState.sessionDeck;
-        isLoading = false;
-      });
-      if (_isOnlineGroup) {
-        _resultsSubscription = _groupSessionService
-            .watchResults(roomCode: widget.roomCode!, sessionDeck: cards)
-            .listen(
-              _handleFirebaseResults,
-              onError: (Object error, StackTrace stackTrace) {
-                if (!mounted) return;
-                setState(() => _firebaseError = error.toString());
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Could not load group results: $error'),
-                  ),
-                );
-              },
-            );
-      }
-    } catch (error) {
-      if (!mounted) return;
-      setState(() => isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not load food options: $error')),
-      );
-    }
-  }
-
-  void nextCard(SwipeDirection direction) {
-    if (_isSubmitting || _waitingForResults) return;
-    if (_isOnlineGroup) {
-      unawaited(_recordOnlineSwipe(direction));
-      return;
+    final errorMessage = _controller.takeErrorMessage();
+    if (errorMessage != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(errorMessage)));
     }
 
-    _recordLocalSwipe(direction);
-  }
-
-  void _recordLocalSwipe(SwipeDirection direction) {
-    _matchState.swipe(
-      memberId: _memberIds[activeMemberIndex],
-      direction: direction,
-    );
-
-    if (!_matchState.isMemberDone(_memberIds[activeMemberIndex])) {
-      setState(() {});
-      return;
-    }
-
-    if (activeMemberIndex < _memberIds.length - 1) {
-      setState(() {
-        activeMemberIndex++;
-      });
-      return;
-    }
-
-    final rankedMatches = _matchState.getRankedMatches();
-    if (rankedMatches.isNotEmpty) {
-      final match = _matchState.getFinalMatch() ?? rankedMatches.first;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => MatchScreen(
-            gate: widget.gate,
-            group: widget.isGroup,
-            spot: match.spot,
-          ),
-        ),
-      );
-    }
-  }
-
-  Future<void> _recordOnlineSwipe(SwipeDirection direction) async {
-    final memberId = _memberIds[activeMemberIndex];
-    final spot = _matchState.currentCardFor(memberId);
-    if (spot == null) return;
-
-    final nextProgress = _matchState.progressFor(memberId) + 1;
-    final isComplete = nextProgress >= cards.length;
-    setState(() => _isSubmitting = true);
-    try {
-      await _groupSessionService.recordSwipe(
-        roomCode: widget.roomCode!,
-        memberId: memberId,
-        spotId: spot.id,
-        direction: direction,
-        progress: nextProgress,
-        isComplete: isComplete,
-      );
-      if (!mounted) return;
-
-      _matchState.swipe(memberId: memberId, direction: direction);
-      setState(() {
-        _isSubmitting = false;
-        _waitingForResults = isComplete;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not save your swipe: $error')),
-      );
-    } finally {
-      if (mounted && _isSubmitting) {
-        setState(() => _isSubmitting = false);
-      }
-    }
-  }
-
-  void _handleFirebaseResults(FirebaseGroupResults? results) {
-    if (!mounted || results == null || _resultNavigationStarted) return;
-    if (results.rankedMatches.isEmpty) return;
+    final match = _controller.matchedSpot;
+    if (match == null || _resultNavigationStarted) return;
 
     _resultNavigationStarted = true;
-    unawaited(_resultsSubscription?.cancel());
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => MatchScreen(
-          gate: widget.gate,
-          group: true,
-          spot: results.rankedMatches.first.spot,
-        ),
+        builder: (_) =>
+            MatchScreen(gate: widget.gate, group: widget.isGroup, spot: match),
       ),
     );
   }
@@ -240,19 +97,19 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
     }
 
     _dragOffset = 0;
-    nextCard(direction);
+    _controller.swipe(direction);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
+    if (_controller.isLoading) {
       return const Scaffold(
         body: Center(
           child: CircularProgressIndicator(color: TiniderColors.yellow),
         ),
       );
     }
-    if (cards.isEmpty) {
+    if (_controller.cards.isEmpty) {
       return Scaffold(
         body: SafeArea(
           child: Padding(
@@ -288,7 +145,7 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
         ),
       );
     }
-    if (_waitingForResults) {
+    if (_controller.waitingForResults) {
       return Scaffold(
         body: SafeArea(
           child: Center(
@@ -316,10 +173,10 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
                       color: TiniderColors.muted,
                     ),
                   ),
-                  if (_firebaseError != null) ...[
+                  if (_controller.firebaseError != null) ...[
                     const SizedBox(height: 12),
                     Text(
-                      _firebaseError!,
+                      _controller.firebaseError!,
                       textAlign: TextAlign.center,
                       style: const TextStyle(color: TiniderColors.red),
                     ),
@@ -332,9 +189,8 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
       );
     }
 
-    final memberId = _memberIds[activeMemberIndex];
-    final card = _matchState.currentCardFor(memberId)!;
-    final progress = _matchState.progressFor(memberId) + 1;
+    final card = _controller.currentCard!;
+    final progress = _controller.currentProgress;
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -355,9 +211,9 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
               const SizedBox(height: 24),
               if (widget.isGroup) ...[
                 Text(
-                  _isOnlineGroup
-                      ? 'Your swipes · $progress/${cards.length}'
-                      : '${_memberLabel(activeMemberIndex)} · $progress/${cards.length}',
+                  _controller.isOnlineGroup
+                      ? 'Your swipes · $progress/${_controller.cards.length}'
+                      : '${_memberLabel(_controller.activeMemberIndex)} · $progress/${_controller.cards.length}',
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w900,
@@ -383,7 +239,7 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
                     ),
                     const Spacer(),
                     Text(
-                      '$progress/${cards.length}',
+                      '$progress/${_controller.cards.length}',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
@@ -523,7 +379,7 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
                       label: 'Pass',
                       icon: Icons.close,
                       hint: 'Swipe left to pass',
-                      onTap: () => nextCard(SwipeDirection.left),
+                      onTap: () => _controller.swipe(SwipeDirection.left),
                       yellow: false,
                     ),
                   ),
@@ -533,7 +389,7 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
                       label: 'Crave',
                       icon: Icons.favorite_border,
                       hint: 'Swipe right to like',
-                      onTap: () => nextCard(SwipeDirection.right),
+                      onTap: () => _controller.swipe(SwipeDirection.right),
                       yellow: true,
                     ),
                   ),
@@ -547,8 +403,9 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
   }
 
   String _memberLabel(int memberIndex) {
-    if (_memberIds[memberIndex] == 'you') return 'You';
-    if (_memberIds[memberIndex] == 'friend') return 'Friend';
+    final memberIds = _controller.sessionMemberIds;
+    if (memberIds[memberIndex] == 'you') return 'You';
+    if (memberIds[memberIndex] == 'friend') return 'Friend';
     return 'Player ${memberIndex + 1}';
   }
 }

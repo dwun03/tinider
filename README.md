@@ -25,6 +25,17 @@ Students walking out of campus buildings (like St. Raymund's or Roque Ruaño) of
   * *Group:* Tracks each participant's votes on the same deck. Right swipes score 1 point, super-likes score 2, and ties favor more likes, shorter walks, then cheaper meals.
 * **Offline WalkCard:** Displays walking directions, operating hours, and landmarks instantly, powered by local JSON data to survive campus dead zones.
 
+## Architecture
+
+The food-swiping flow uses an MVC-style separation:
+
+* **Models** in `lib/models/` define food spot data.
+* **Views** in `lib/screens/` render screens, handle presentation gestures, and navigate between screens.
+* **Controllers** in `lib/controllers/` coordinate screen state and application
+  logic. `FoodSwipeController` manages the swipe session and delegates match
+  scoring to `QuickMatchState`.
+* **Services** in `lib/services/` handle external data access, including Firebase group sessions.
+
 ## Tech Stack
 * **Framework:** Flutter (Dart)
 * **UI Dependencies:** `flutter_card_swiper`
