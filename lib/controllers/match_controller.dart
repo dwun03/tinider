@@ -72,14 +72,25 @@ class QuickMatchState extends ChangeNotifier {
   void startGroupSession({
     required List<String> groupMemberIds,
     int? maxBudgetPhp,
+    int? minBudgetPhp,
     int? maxWalkMinutes,
     String? preferredGateKeyword,
     bool shuffleDeck = true,
   }) {
-    assert(
-      groupMemberIds.length >= 2,
-      'A group match requires at least 2 people.',
-    );
+    if (groupMemberIds.isEmpty) {
+      throw ArgumentError.value(
+        groupMemberIds,
+        'groupMemberIds',
+        'At least one member is required.',
+      );
+    }
+    if (groupMemberIds.toSet().length != groupMemberIds.length) {
+      throw ArgumentError.value(
+        groupMemberIds,
+        'groupMemberIds',
+        'Member IDs must be unique.',
+      );
+    }
 
     _memberIds = List.from(groupMemberIds);
     _memberProgress.clear();
@@ -93,6 +104,10 @@ class QuickMatchState extends ChangeNotifier {
     _sessionDeck = _allSpots.where((spot) {
       if (maxBudgetPhp != null &&
           spot.priceRangePhp.averageMeal > maxBudgetPhp) {
+        return false;
+      }
+      if (minBudgetPhp != null &&
+          spot.priceRangePhp.averageMeal < minBudgetPhp) {
         return false;
       }
       if (maxWalkMinutes != null && spot.walkingTimeMinutes > maxWalkMinutes) {
@@ -129,12 +144,22 @@ class QuickMatchState extends ChangeNotifier {
 
   /// Checks if every member in the paired group has finished swiping.
   bool get isSessionComplete {
-    if (_memberIds.isEmpty || _sessionDeck.isEmpty) return false;
-    return _memberIds.every(isMemberDone);
+    return _memberIds.isNotEmpty && _memberIds.every(isMemberDone);
   }
+
+  /// Returns how many spots a member has swiped in the current session.
+  int progressFor(String memberId) => _memberProgress[memberId] ?? 0;
 
   /// 3. Records a member's swipe on their current card and advances their deck.
   void swipe({required String memberId, required SwipeDirection direction}) {
+    if (!_memberIds.contains(memberId)) {
+      throw ArgumentError.value(
+        memberId,
+        'memberId',
+        'Unknown session member.',
+      );
+    }
+
     final currentSpot = currentCardFor(memberId);
     if (currentSpot == null) return;
 
@@ -147,15 +172,26 @@ class QuickMatchState extends ChangeNotifier {
 
   /// 4. Ranks all swiped spots and returns the leaderboard.
   /// Scoring: right = +1, superLike = +2, left = 0.
-  List<MatchResult> getRankedMatches() {
+  List<MatchResult> getRankedMatches() => rankVotes(
+    spots: _sessionDeck,
+    memberIds: _memberIds,
+    votesBySpot: _swipes,
+  );
+
+  static List<MatchResult> rankVotes({
+    required List<FoodSpot> spots,
+    required List<String> memberIds,
+    required Map<String, Map<String, SwipeDirection>> votesBySpot,
+  }) {
     final results = <MatchResult>[];
 
-    for (final spot in _sessionDeck) {
-      final votes = _swipes[spot.id] ?? {};
+    for (final spot in spots) {
+      final votes = votesBySpot[spot.id] ?? {};
       int score = 0;
       final likedBy = <String>[];
 
-      votes.forEach((memberId, direction) {
+      for (final memberId in memberIds) {
+        final direction = votes[memberId];
         if (direction == SwipeDirection.right) {
           score += 1;
           likedBy.add(memberId);
@@ -163,7 +199,7 @@ class QuickMatchState extends ChangeNotifier {
           score += 2;
           likedBy.add(memberId);
         }
-      });
+      }
 
       results.add(
         MatchResult(
@@ -171,7 +207,7 @@ class QuickMatchState extends ChangeNotifier {
           totalScore: score,
           likeCount: likedBy.length,
           likedByMemberIds: likedBy,
-          isUnanimous: likedBy.length == _memberIds.length,
+          isUnanimous: likedBy.length == memberIds.length,
         ),
       );
     }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/firebase_group_session_service.dart';
 import '../theme/tinider_theme.dart';
 import '../widgets/tinider_widgets.dart';
 import 'swipe_screens.dart';
@@ -212,9 +213,64 @@ class RoomCodeScreen extends StatefulWidget {
 
 class _RoomCodeScreenState extends State<RoomCodeScreen> {
   final List<int> code = [];
+  final FirebaseGroupSessionService _groupSessionService =
+      FirebaseGroupSessionService();
+  bool isWorking = false;
 
   void addDigit(int digit) {
     if (code.length < 4) setState(() => code.add(digit));
+  }
+
+  Future<void> _joinRoom() async {
+    setState(() => isWorking = true);
+    try {
+      final session = await _groupSessionService.joinRoom(
+        code.map((digit) => digit.toString()).join(),
+      );
+      if (!mounted) return;
+      await _openRoom(session);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Could not join room: $error')));
+    } finally {
+      if (mounted) setState(() => isWorking = false);
+    }
+  }
+
+  Future<void> _createRoom() async {
+    setState(() => isWorking = true);
+    try {
+      final session = await _groupSessionService.createRoom(
+        gate: widget.gate,
+        budget: widget.budget,
+      );
+      if (!mounted) return;
+      await _openRoom(session);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not create room: $error')));
+    } finally {
+      if (mounted) setState(() => isWorking = false);
+    }
+  }
+
+  Future<void> _openRoom(FirebaseGroupSession session) {
+    return Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FoodSwipeScreen(
+          gate: session.gate,
+          budget: session.budget,
+          isGroup: true,
+          roomCode: session.roomCode,
+          memberIds: [session.memberId],
+          onlineMemberId: session.memberId,
+        ),
+      ),
+    );
   }
 
   @override
@@ -330,26 +386,12 @@ class _RoomCodeScreenState extends State<RoomCodeScreen> {
               ),
               TiniderPrimaryButton(
                 label: 'Join room',
-                onPressed: code.length == 4
-                    ? () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => FoodSwipeScreen(
-                            gate: widget.gate,
-                            budget: widget.budget,
-                            isGroup: true,
-                            roomCode: code
-                                .map((digit) => digit.toString())
-                                .join(),
-                          ),
-                        ),
-                      )
-                    : null,
+                onPressed: code.length == 4 && !isWorking ? _joinRoom : null,
               ),
               const SizedBox(height: 12),
               Center(
                 child: TextButton(
-                  onPressed: () {},
+                  onPressed: isWorking ? null : _createRoom,
                   child: const Text(
                     'Create a new room instead',
                     style: TextStyle(
@@ -576,6 +618,10 @@ class _PassPhoneScreenState extends State<PassPhoneScreen> {
                       budget: widget.budget,
                       isGroup: true,
                       roomCode: 'OFFLINE',
+                      memberIds: List.generate(
+                        players,
+                        (index) => index == 0 ? 'you' : 'player_${index + 1}',
+                      ),
                     ),
                   ),
                 ),

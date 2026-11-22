@@ -20,16 +20,42 @@ Students walking out of campus buildings (like St. Raymund's or Roque Ruaño) of
 * **Gate & Budget Filter:** Filters food spots based on your nearest UST exit (Dapitan, P. Noval, Lacson, or España) and your budget tier (Tipid <₱100, Regular ₱100-₱180, Deserve 'Ko To >₱180).
 * **Craving Swiper:** A gesture-based card deck. Swipe right to add a spot to your **Cravings List**, swipe left to pass.
 * **"Bahala Na" Auto-Pick:** A fallback edge-case mechanism. If a user rejects every card in the deck, the app forcibly assigns a meal to prevent endless looping.
-* **Quick Match Logic:** 
-  * *Solo:* Locks in a choice once 3 items are liked.
-  * *Group:* Supports "Pass-the-Phone" or online 4-digit room codes to instantly match when two users swipe right on the same stall.
+* **Quick Match Logic:**
+  * *Solo:* Ranks liked spots after the full filtered deck is swiped; if none are liked, the highest-ranked spot is selected as a fallback.
+  * *Group:* Tracks each participant's votes on the same deck. Right swipes score 1 point, super-likes score 2, and ties favor more likes, shorter walks, then cheaper meals.
 * **Offline WalkCard:** Displays walking directions, operating hours, and landmarks instantly, powered by local JSON data to survive campus dead zones.
+
+## Architecture
+
+The food-swiping flow uses an MVC-style separation:
+
+* **Models** in `lib/models/` define food spot data.
+* **Views** in `lib/screens/` render screens, handle presentation gestures, and navigate between screens.
+* **Controllers** in `lib/controllers/` coordinate screen state and application
+  logic. `FoodSwipeController` manages the swipe session and delegates match
+  scoring to `QuickMatchState`.
+* **Services** in `lib/services/` handle external data access, including Firebase group sessions.
 
 ## Tech Stack
 * **Framework:** Flutter (Dart)
 * **UI Dependencies:** `flutter_card_swiper`
 * **Data & State:** Local JSON (Offline-first approach), `shared_preferences`
 * **Design:** Figma
+
+## Firebase group sessions
+
+Firestore stores online room IDs, participant progress, swipe votes, and ranked
+results only. Food spot records remain in `assets/data/food_dataset.json` and
+are not uploaded. The pass-the-phone mode continues to work locally.
+
+To enable online rooms:
+
+1. Create a Firebase project and register the Android/iOS app IDs.
+2. Install the Firebase CLI and FlutterFire CLI, then run
+   `flutterfire configure --project=<your-project-id>` from the project root.
+3. Enable **Anonymous** sign-in and create a Cloud Firestore database in the
+   Firebase console.
+4. Deploy the room access rules with `firebase deploy --only firestore:rules`.
 
 ## 🐯 The Team 
 * **Anton** - Project Manager / Lead
