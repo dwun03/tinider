@@ -38,9 +38,13 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
   int activeMemberIndex = 0;
   List<FoodSpot> cards = [];
   List<String> _memberIds = [];
+  Map<String, dynamic> _roomParticipants = {};
   bool isLoading = true;
   double _dragOffset = 0;
   bool _winnerHandled = false;
+
+  bool get _isOnlineRoom =>
+      widget.isGroup && widget.roomCode != null && widget.roomCode != 'OFFLINE';
 
   static const double _swipeDistanceThreshold = 100;
   static const double _swipeVelocityThreshold = 600;
@@ -77,9 +81,7 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
       _memberIds =
           widget.memberIds ??
           (widget.isGroup ? const ['you', 'friend'] : const ['you']);
-      if (widget.isGroup &&
-          widget.roomCode != null &&
-          widget.roomCode != 'OFFLINE') {
+      if (_isOnlineRoom) {
         final memberId = await _roomService.ensureIdentity();
         _memberIds = [memberId];
       }
@@ -96,9 +98,7 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
         cards = _matchState.sessionDeck;
         isLoading = false;
       });
-      if (widget.isGroup &&
-          widget.roomCode != null &&
-          widget.roomCode != 'OFFLINE') {
+      if (_isOnlineRoom) {
         _watchOnlineRoom();
       }
     } catch (error) {
@@ -116,9 +116,7 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
       direction: direction,
     );
 
-    if (widget.isGroup &&
-        widget.roomCode != null &&
-        widget.roomCode != 'OFFLINE') {
+    if (_isOnlineRoom) {
       final memberId = _memberIds[activeMemberIndex];
       final cardIndex = _matchState.progressFor(memberId);
       final currentCard = cards[cardIndex - 1];
@@ -178,6 +176,9 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
             final participants = Map<String, dynamic>.from(
               data['participants'] as Map? ?? {},
             );
+            if (mounted) {
+              setState(() => _roomParticipants = participants);
+            }
             if (participants.isEmpty) return;
             final allFinished = participants.values.every(
               (participant) =>
@@ -293,6 +294,9 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
     }
 
     final memberId = _memberIds[activeMemberIndex];
+    if (_isOnlineRoom && _matchState.isMemberDone(memberId)) {
+      return _buildWaitingScreen(memberId);
+    }
     final card = _matchState.currentCardFor(memberId)!;
     final progress = _matchState.progressFor(memberId) + 1;
     return Scaffold(
@@ -496,6 +500,120 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
                     ),
                   ),
                 ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWaitingScreen(String memberId) {
+    final participants = _roomParticipants.entries.toList();
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(32, 20, 32, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const TiniderBackButton(),
+                  const Spacer(),
+                  TiniderContextPill('Group · Room ${widget.roomCode}'),
+                ],
+              ),
+              const SizedBox(height: 48),
+              const Icon(
+                Icons.hourglass_top_rounded,
+                size: 64,
+                color: TiniderColors.yellow,
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                "You're all done!",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w900,
+                  color: TiniderColors.brown,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Waiting for the other players to finish swiping.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 17, color: TiniderColors.muted),
+              ),
+              const SizedBox(height: 28),
+              const Text(
+                'Players',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: TiniderColors.brown,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: participants.isEmpty
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: TiniderColors.yellow,
+                        ),
+                      )
+                    : ListView.separated(
+                        itemCount: participants.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 8),
+                        itemBuilder: (context, index) {
+                          final participant = participants[index];
+                          final data = participant.value is Map
+                              ? Map<String, dynamic>.from(
+                                  participant.value as Map,
+                                )
+                              : const <String, dynamic>{};
+                          final finished = data['finished'] == true;
+                          final progress = data['progress'] as int? ?? 0;
+                          final isCurrentPlayer = participant.key == memberId;
+                          return Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: TiniderColors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: TiniderColors.brown),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    isCurrentPlayer
+                                        ? 'You'
+                                        : 'Player ${index + 1}',
+                                    style: const TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w800,
+                                      color: TiniderColors.brown,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  finished
+                                      ? 'Finished'
+                                      : '$progress/${cards.length}',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: finished
+                                        ? TiniderColors.brown
+                                        : TiniderColors.muted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
               ),
             ],
           ),
