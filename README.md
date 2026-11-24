@@ -39,7 +39,7 @@ The food-swiping flow uses an MVC-style separation:
 ## Tech Stack
 * **Framework:** Flutter (Dart)
 * **UI Dependencies:** `flutter_card_swiper`
-* **Data & State:** Local JSON (Offline-first approach), `shared_preferences`
+* **Data & State:** Local JSON (Offline-first approach), `firebase_core`, `firebase_auth`, and `cloud_firestore`
 * **Design:** Figma
 
 ## Firebase group sessions
