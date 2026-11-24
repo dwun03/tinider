@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "619958444405",
+    "project_id": "tinider-c6398",
+    "storage_bucket": "tinider-c6398.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:619958444405:android:970aad6f2bf6e62163333c",
+        "android_client_info": {
+          "package_name": "com.example.tinider"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCyucMuglx0FRQOuZshFLiyHcLQSlgo3oM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/room_service.dart';
 import '../theme/tinider_theme.dart';
 import '../widgets/tinider_widgets.dart';
 import 'swipe_screens.dart';
@@ -212,9 +213,70 @@ class RoomCodeScreen extends StatefulWidget {
 
 class _RoomCodeScreenState extends State<RoomCodeScreen> {
   final List<int> code = [];
+  final RoomService _roomService = RoomService();
+  bool _isBusy = false;
 
   void addDigit(int digit) {
     if (code.length < 4) setState(() => code.add(digit));
+  }
+
+  Future<void> _joinRoom() async {
+    if (_isBusy || code.length != 4) return;
+    setState(() => _isBusy = true);
+    final roomCode = code.map((digit) => digit.toString()).join();
+    try {
+      final memberId = await _roomService.joinRoom(roomCode);
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => FoodSwipeScreen(
+            gate: widget.gate,
+            budget: widget.budget,
+            isGroup: true,
+            roomCode: roomCode,
+            memberIds: [memberId],
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.toString())));
+    } finally {
+      if (mounted) setState(() => _isBusy = false);
+    }
+  }
+
+  Future<void> _createRoom() async {
+    if (_isBusy) return;
+    setState(() => _isBusy = true);
+    try {
+      final roomCode = await _roomService.createRoom(
+        gate: widget.gate,
+        budget: widget.budget,
+      );
+      final memberId = await _roomService.ensureIdentity();
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => FoodSwipeScreen(
+            gate: widget.gate,
+            budget: widget.budget,
+            isGroup: true,
+            roomCode: roomCode,
+            memberIds: [memberId],
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.toString())));
+    } finally {
+      if (mounted) setState(() => _isBusy = false);
+    }
   }
 
   @override
@@ -329,28 +391,13 @@ class _RoomCodeScreenState extends State<RoomCodeScreen> {
                 ),
               ),
               TiniderPrimaryButton(
-                label: 'Join room',
-                onPressed: code.length == 4
-                    ? () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => FoodSwipeScreen(
-                            gate: widget.gate,
-                            budget: widget.budget,
-                            isGroup: true,
-                            roomCode: code
-                                .map((digit) => digit.toString())
-                                .join(),
-                            memberIds: const ['you', 'friend'],
-                          ),
-                        ),
-                      )
-                    : null,
+                label: _isBusy ? 'Please wait...' : 'Join room',
+                onPressed: code.length == 4 && !_isBusy ? _joinRoom : null,
               ),
               const SizedBox(height: 12),
               Center(
                 child: TextButton(
-                  onPressed: () {},
+                  onPressed: _isBusy ? null : _createRoom,
                   child: const Text(
                     'Create a new room instead',
                     style: TextStyle(

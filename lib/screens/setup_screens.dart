@@ -264,9 +264,9 @@ class _WhereAtScreenState extends State<WhereAtScreen> {
                       Row(
                         children: [
                           for (final item in const [
-                            ('₱', 'Thrifty'),
+                            ('₱', 'Tipid'),
                             ('₱₱', 'Regular'),
-                            ('₱₱₱', 'Special Treat'),
+                            ('₱₱₱', "Deserve 'Ko To"),
                           ])
                             Expanded(
                               child: Padding(

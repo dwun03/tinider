@@ -1,9 +1,17 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'package:flutter/material.dart';
 
 import 'screens/setup_screens.dart';
 import 'theme/tinider_theme.dart';
 
-void main() => runApp(const TiniderApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  runApp(const TiniderApp());
+}
 
 class TiniderApp extends StatelessWidget {
   const TiniderApp({super.key});
