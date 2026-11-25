@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../controllers/food_swipe_controller.dart';
 import '../controllers/match_controller.dart';
 import '../models/foodspot.dart';
 import '../services/room_service.dart';
@@ -17,6 +18,7 @@ class FoodSwipeScreen extends StatefulWidget {
   final bool isGroup;
   final String? roomCode;
   final List<String>? memberIds;
+  final String? onlineMemberId;
 
   const FoodSwipeScreen({
     super.key,
@@ -25,6 +27,7 @@ class FoodSwipeScreen extends StatefulWidget {
     this.isGroup = false,
     this.roomCode,
     this.memberIds,
+    this.onlineMemberId,
   });
 
   @override
@@ -52,7 +55,15 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadCards();
+    _controller = FoodSwipeController(
+      gate: widget.gate,
+      budget: widget.budget,
+      isGroup: widget.isGroup,
+      roomCode: widget.roomCode,
+      memberIds: widget.memberIds,
+      onlineMemberId: widget.onlineMemberId,
+    )..addListener(_handleControllerChanged);
+    unawaited(_controller.loadCards());
   }
 
   @override
@@ -108,13 +119,6 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
         SnackBar(content: Text('Could not load food options: $error')),
       );
     }
-  }
-
-  void nextCard(SwipeDirection direction) {
-    _matchState.swipe(
-      memberId: _memberIds[activeMemberIndex],
-      direction: direction,
-    );
 
     if (_isOnlineRoom) {
       final memberId = _memberIds[activeMemberIndex];
@@ -144,20 +148,14 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
       return;
     }
 
-    final rankedMatches = _matchState.getRankedMatches();
-    if (rankedMatches.isNotEmpty) {
-      final match = _matchState.getFinalMatch() ?? rankedMatches.first;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => MatchScreen(
-            gate: widget.gate,
-            group: widget.isGroup,
-            spot: match.spot,
-          ),
-        ),
-      );
-    }
+    _resultNavigationStarted = true;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            MatchScreen(gate: widget.gate, group: widget.isGroup, spot: match),
+      ),
+    );
   }
 
   void _watchOnlineRoom() {
@@ -244,19 +242,19 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
     }
 
     _dragOffset = 0;
-    nextCard(direction);
+    _controller.swipe(direction);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
+    if (_controller.isLoading) {
       return const Scaffold(
         body: Center(
           child: CircularProgressIndicator(color: TiniderColors.yellow),
         ),
       );
     }
-    if (cards.isEmpty) {
+    if (_controller.cards.isEmpty) {
       return Scaffold(
         body: SafeArea(
           child: Padding(
@@ -292,6 +290,49 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
         ),
       );
     }
+    if (_controller.waitingForResults) {
+      return Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(color: TiniderColors.yellow),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Waiting for everyone to finish swiping',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
+                      color: TiniderColors.brown,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Room ${widget.roomCode}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      color: TiniderColors.muted,
+                    ),
+                  ),
+                  if (_controller.firebaseError != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      _controller.firebaseError!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: TiniderColors.red),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     final memberId = _memberIds[activeMemberIndex];
     if (_isOnlineRoom && _matchState.isMemberDone(memberId)) {
@@ -319,7 +360,9 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
               const SizedBox(height: 24),
               if (widget.isGroup) ...[
                 Text(
-                  '${_memberLabel(activeMemberIndex)} · $progress/${cards.length}',
+                  _controller.isOnlineGroup
+                      ? 'Your swipes · $progress/${_controller.cards.length}'
+                      : '${_memberLabel(_controller.activeMemberIndex)} · $progress/${_controller.cards.length}',
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w900,
@@ -345,7 +388,7 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
                     ),
                     const Spacer(),
                     Text(
-                      '$progress/${cards.length}',
+                      '$progress/${_controller.cards.length}',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
@@ -485,7 +528,7 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
                       label: 'Pass',
                       icon: Icons.close,
                       hint: 'Swipe left to pass',
-                      onTap: () => nextCard(SwipeDirection.left),
+                      onTap: () => _controller.swipe(SwipeDirection.left),
                       yellow: false,
                     ),
                   ),
@@ -495,7 +538,7 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
                       label: 'Crave',
                       icon: Icons.favorite_border,
                       hint: 'Swipe right to like',
-                      onTap: () => nextCard(SwipeDirection.right),
+                      onTap: () => _controller.swipe(SwipeDirection.right),
                       yellow: true,
                     ),
                   ),
@@ -623,8 +666,9 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
   }
 
   String _memberLabel(int memberIndex) {
-    if (_memberIds[memberIndex] == 'you') return 'You';
-    if (_memberIds[memberIndex] == 'friend') return 'Friend';
+    final memberIds = _controller.sessionMemberIds;
+    if (memberIds[memberIndex] == 'you') return 'You';
+    if (memberIds[memberIndex] == 'friend') return 'Friend';
     return 'Player ${memberIndex + 1}';
   }
 }

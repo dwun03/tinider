@@ -92,13 +92,16 @@ void main() {
         home: FoodSwipeScreen(gate: '', budget: 'All'),
       ),
     );
-    for (var index = 0; index < 20; index++) {
-      if (find.byType(CircularProgressIndicator).evaluate().isEmpty) break;
-      await tester.pump(const Duration(milliseconds: 100));
-    }
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(seconds: 1)),
+    );
+    await tester.pump();
+    expect(find.byType(FoodImagePlaceholder), findsOneWidget);
 
     await tester.drag(find.byType(FoodImagePlaceholder), const Offset(-180, 0));
     await tester.pumpAndSettle();
+    expect(find.textContaining('2/'), findsOneWidget);
+
     await tester.drag(find.byType(FoodImagePlaceholder), const Offset(180, 0));
     await tester.pumpAndSettle();
 
