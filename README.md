@@ -57,7 +57,8 @@ To enable online rooms:
    `flutterfire configure --project=<your-project-id>` from the project root.
 3. Enable **Anonymous** sign-in and create a Cloud Firestore database in the
    Firebase console.
-4. Deploy the room access rules with `firebase deploy --only firestore:rules`.
+4. Deploy the room access rules with
+   `firebase deploy --only firestore:rules --project tinider-c6398`.
 
 ## Unsigned iOS build
 
