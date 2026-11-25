@@ -47,6 +47,8 @@ The food-swiping flow uses an MVC-style separation:
 Firestore stores online room IDs, participant progress, swipe votes, and ranked
 results only. Food spot records remain in `assets/data/food_dataset.json` and
 are not uploaded. The pass-the-phone mode continues to work locally.
+Online rooms support 2–8 players: the host selects the expected group size,
+swiping starts when the room fills, and results wait for every player to finish.
 
 To enable online rooms:
 
@@ -56,6 +58,20 @@ To enable online rooms:
 3. Enable **Anonymous** sign-in and create a Cloud Firestore database in the
    Firebase console.
 4. Deploy the room access rules with `firebase deploy --only firestore:rules`.
+
+## Unsigned iOS build
+
+The iOS build runs on a macOS GitHub Actions runner because Flutter requires
+macOS and Xcode to build for iOS. To create an unsigned IPA artifact:
+
+1. Open the repository's **Actions** tab on GitHub.
+2. Select **Build unsigned iOS IPA**, then choose **Run workflow**.
+3. When the run completes, download the `tinider-ios-unsigned-ipa` artifact.
+
+The IPA is packaged without Apple code signing. It is a build artifact only and
+cannot be installed on an iPhone or distributed through TestFlight. Installing
+or distributing an iOS app requires Apple signing and provisioning, which this
+workflow intentionally does not configure.
 
 ## 🐯 The Team 
 * **Anton** - Project Manager / Lead

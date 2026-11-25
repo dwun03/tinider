@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../services/firebase_group_session_service.dart';
@@ -231,13 +233,7 @@ class _RoomCodeScreenState extends State<RoomCodeScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => FoodSwipeScreen(
-            gate: session.gate,
-            budget: session.budget,
-            isGroup: true,
-            roomCode: session.roomCode,
-            onlineMemberId: session.memberId,
-          ),
+          builder: (_) => OnlineGroupLobbyScreen(session: session),
         ),
       );
     } catch (error) {
@@ -253,21 +249,19 @@ class _RoomCodeScreenState extends State<RoomCodeScreen> {
     if (_isBusy) return;
     setState(() => _isBusy = true);
     try {
+      final expectedPlayers = await _chooseExpectedPlayers();
+      if (expectedPlayers == null || !mounted) return;
+
       final session = await _roomService.createRoom(
         gate: widget.gate,
         budget: widget.budget,
+        expectedPlayers: expectedPlayers,
       );
       if (!mounted) return;
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => FoodSwipeScreen(
-            gate: session.gate,
-            budget: session.budget,
-            isGroup: true,
-            roomCode: session.roomCode,
-            onlineMemberId: session.memberId,
-          ),
+          builder: (_) => OnlineGroupLobbyScreen(session: session),
         ),
       );
     } catch (error) {
@@ -277,6 +271,59 @@ class _RoomCodeScreenState extends State<RoomCodeScreen> {
     } finally {
       if (mounted) setState(() => _isBusy = false);
     }
+  }
+
+  Future<int?> _chooseExpectedPlayers() {
+    var expectedPlayers = 2;
+    return showDialog<int>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('How many players?'),
+          content: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _PlayerCountButton(
+                icon: Icons.remove,
+                enabled:
+                    expectedPlayers >
+                    FirebaseGroupSessionService.minParticipants,
+                onTap: () => setDialogState(() => expectedPlayers--),
+              ),
+              SizedBox(
+                width: 64,
+                child: Text(
+                  '$expectedPlayers',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    color: TiniderColors.brown,
+                  ),
+                ),
+              ),
+              _PlayerCountButton(
+                icon: Icons.add,
+                enabled:
+                    expectedPlayers <
+                    FirebaseGroupSessionService.maxParticipants,
+                onTap: () => setDialogState(() => expectedPlayers++),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, expectedPlayers),
+              child: const Text('Create room'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -408,6 +455,160 @@ class _RoomCodeScreenState extends State<RoomCodeScreen> {
                   ),
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class OnlineGroupLobbyScreen extends StatefulWidget {
+  final FirebaseGroupSession session;
+
+  const OnlineGroupLobbyScreen({super.key, required this.session});
+
+  @override
+  State<OnlineGroupLobbyScreen> createState() => _OnlineGroupLobbyScreenState();
+}
+
+class _OnlineGroupLobbyScreenState extends State<OnlineGroupLobbyScreen> {
+  final FirebaseGroupSessionService _roomService =
+      FirebaseGroupSessionService();
+  StreamSubscription<FirebaseGroupRoomState>? _roomSubscription;
+  FirebaseGroupRoomState? _roomState;
+  String? _error;
+  bool _isOpeningSwipeScreen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _roomSubscription = _roomService
+        .watchRoomState(widget.session.roomCode)
+        .listen(
+          _handleRoomState,
+          onError: (Object error, StackTrace stackTrace) {
+            if (!mounted) return;
+            setState(() => _error = error.toString());
+          },
+        );
+  }
+
+  void _handleRoomState(FirebaseGroupRoomState roomState) {
+    if (!mounted) return;
+    setState(() {
+      _roomState = roomState;
+      _error = null;
+    });
+
+    if (roomState.status == 'swiping') {
+      _openSwipeScreen();
+    }
+  }
+
+  void _openSwipeScreen() {
+    if (_isOpeningSwipeScreen) return;
+    _isOpeningSwipeScreen = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => FoodSwipeScreen(
+            gate: widget.session.gate,
+            budget: widget.session.budget,
+            isGroup: true,
+            roomCode: widget.session.roomCode,
+            onlineMemberId: widget.session.memberId,
+          ),
+        ),
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    unawaited(_roomSubscription?.cancel());
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final roomState = _roomState;
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(32, 20, 32, 28),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const TiniderBackButton(),
+              const SizedBox(height: 32),
+              const Text(
+                'Waiting for players',
+                style: TextStyle(
+                  fontSize: 36,
+                  height: 1,
+                  fontWeight: FontWeight.w900,
+                  color: TiniderColors.brown,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Share this room code with everyone joining.',
+                style: TextStyle(fontSize: 18, color: TiniderColors.muted),
+              ),
+              const SizedBox(height: 24),
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 28,
+                    vertical: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: TiniderColors.yellow,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: TiniderColors.brown, width: 3),
+                  ),
+                  child: Text(
+                    widget.session.roomCode,
+                    style: const TextStyle(
+                      fontSize: 44,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 8,
+                      color: TiniderColors.brown,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Center(
+                child: Text(
+                  roomState == null
+                      ? 'Connecting to room...'
+                      : '${roomState.joinedPlayers} of ${roomState.expectedPlayers} players joined',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: TiniderColors.brown,
+                  ),
+                ),
+              ),
+              if (roomState != null &&
+                  roomState.joinedPlayers < roomState.expectedPlayers) ...[
+                const SizedBox(height: 16),
+                const Center(
+                  child: CircularProgressIndicator(color: TiniderColors.yellow),
+                ),
+              ],
+              if (_error != null) ...[
+                const SizedBox(height: 16),
+                Text(
+                  _error!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: TiniderColors.red),
+                ),
+              ],
             ],
           ),
         ),

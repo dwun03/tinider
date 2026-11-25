@@ -1,0 +1,50 @@
+name: Build unsigned iOS IPA
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build unsigned iOS archive
+        run: flutter build ipa --release --no-codesign
+
+      - name: Package unsigned IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_path="build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app"
+          ipa_dir="build/ios/ipa"
+
+          if [[ ! -d "$app_path" ]]; then
+            echo "Expected app bundle was not created: $app_path" >&2
+            exit 1
+          fi
+
+          mkdir -p "$ipa_dir/Payload"
+          ditto "$app_path" "$ipa_dir/Payload/Runner.app"
+          (cd "$ipa_dir" && ditto -c -k --sequesterRsrc --keepParent Payload Tinider-unsigned.ipa)
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: tinider-ios-unsigned-ipa
+          path: build/ios/ipa/Tinider-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 7

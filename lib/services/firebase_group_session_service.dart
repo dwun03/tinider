@@ -27,11 +27,37 @@ class FirebaseGroupResults {
   const FirebaseGroupResults(this.rankedMatches);
 }
 
+class FirebaseGroupRoomState {
+  final int expectedPlayers;
+  final int joinedPlayers;
+  final String status;
+
+  const FirebaseGroupRoomState({
+    required this.expectedPlayers,
+    required this.joinedPlayers,
+    required this.status,
+  });
+}
+
 class FirebaseGroupSessionService {
   FirebaseGroupSessionService();
 
-  static const int _maxParticipants = 2;
+  static const int minParticipants = 2;
+  static const int maxParticipants = 8;
   static final Random _random = Random.secure();
+
+  static bool areAllExpectedMembersComplete({
+    required int expectedPlayers,
+    required Iterable<bool> completionStates,
+  }) {
+    if (expectedPlayers < minParticipants ||
+        expectedPlayers > maxParticipants) {
+      return false;
+    }
+    final states = completionStates.toList();
+    return states.length == expectedPlayers &&
+        states.every((isComplete) => isComplete);
+  }
 
   FirebaseFirestore get _db => FirebaseFirestore.instance;
   FirebaseAuth get _authClient => FirebaseAuth.instance;
@@ -54,7 +80,18 @@ class FirebaseGroupSessionService {
   Future<FirebaseGroupSession> createRoom({
     required String gate,
     required String budget,
+    required int expectedPlayers,
   }) async {
+    if (expectedPlayers < minParticipants ||
+        expectedPlayers > maxParticipants) {
+      throw RangeError.range(
+        expectedPlayers,
+        minParticipants,
+        maxParticipants,
+        'expectedPlayers',
+      );
+    }
+
     final memberId = await _ensureSignedIn();
 
     for (var attempt = 0; attempt < 30; attempt++) {
@@ -71,6 +108,8 @@ class FirebaseGroupSessionService {
           'memberUids': [memberId],
           'gate': gate,
           'budget': budget,
+          'expectedPlayers': expectedPlayers,
+          'completedMemberUids': <String>[],
           'status': 'open',
           'createdAt': FieldValue.serverTimestamp(),
         });
@@ -119,18 +158,22 @@ class FirebaseGroupSessionService {
       final room = roomSnapshot.data()!;
       final currentMember = await transaction.get(memberRef);
       final memberUids = List<String>.from(room['memberUids'] as List);
+      final expectedPlayers = room['expectedPlayers'] as int;
       if (room['status'] == 'completed') {
         throw StateError('This room has already completed its match.');
       }
 
       if (!memberUids.contains(memberId)) {
-        if (memberUids.length >= _maxParticipants) {
+        if (room['status'] != 'open') {
+          throw StateError('This room has already started.');
+        }
+        if (memberUids.length >= expectedPlayers) {
           throw StateError('Room $roomCode is full.');
         }
         memberUids.add(memberId);
         transaction.update(roomRef, {
           'memberUids': memberUids,
-          'status': 'swiping',
+          'status': memberUids.length == expectedPlayers ? 'swiping' : 'open',
         });
       }
 
@@ -180,7 +223,27 @@ class FirebaseGroupSessionService {
       if (isComplete) 'completedAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+    if (isComplete) {
+      batch.update(roomRef, {
+        'completedMemberUids': FieldValue.arrayUnion([memberId]),
+      });
+    }
     await batch.commit();
+  }
+
+  Stream<FirebaseGroupRoomState> watchRoomState(String roomCode) {
+    return _rooms.doc(roomCode).snapshots().map((snapshot) {
+      if (!snapshot.exists) {
+        throw StateError('Room $roomCode was not found.');
+      }
+
+      final room = snapshot.data()!;
+      return FirebaseGroupRoomState(
+        expectedPlayers: room['expectedPlayers'] as int,
+        joinedPlayers: (room['memberUids'] as List).length,
+        status: room['status'] as String,
+      );
+    });
   }
 
   Stream<FirebaseGroupResults?> watchResults({
@@ -191,11 +254,23 @@ class FirebaseGroupSessionService {
     final membersRef = roomRef.collection('members');
 
     return membersRef.snapshots().asyncMap((memberSnapshot) async {
+      final roomSnapshot = await roomRef.get();
+      if (!roomSnapshot.exists) return null;
+      final room = roomSnapshot.data()!;
+      final expectedPlayers = room['expectedPlayers'];
+      final roomMemberIds = List<String>.from(room['memberUids'] as List);
       final memberIds = memberSnapshot.docs.map((doc) => doc.id).toList()
         ..sort();
-      if (memberIds.length < 2 ||
-          memberSnapshot.docs.any(
-            (member) => member.data()['completed'] != true,
+      if (expectedPlayers is! int ||
+          room['status'] != 'swiping' ||
+          memberIds.length != expectedPlayers ||
+          roomMemberIds.length != expectedPlayers ||
+          !Set<String>.from(memberIds).containsAll(roomMemberIds) ||
+          !areAllExpectedMembersComplete(
+            expectedPlayers: expectedPlayers,
+            completionStates: memberSnapshot.docs.map(
+              (member) => member.data()['completed'] == true,
+            ),
           )) {
         return null;
       }

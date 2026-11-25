@@ -31,4 +31,42 @@ void main() {
     expect(find.text('1'), findsOneWidget);
     expect(find.text('0'), findsNWidgets(2));
   });
+
+  testWidgets('online room creator can select a four-player room', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(360, 640));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: RoomCodeScreen(gate: 'P. Noval', budget: 'Regular'),
+      ),
+    );
+
+    await tester.tap(find.text('Create a new room instead'));
+    await tester.pumpAndSettle();
+
+    final dialog = find.byType(AlertDialog);
+    expect(
+      find.descendant(of: dialog, matching: find.text('2')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.descendant(of: dialog, matching: find.byIcon(Icons.add)),
+    );
+    await tester.pump();
+    await tester.tap(
+      find.descendant(of: dialog, matching: find.byIcon(Icons.add)),
+    );
+    await tester.pump();
+
+    expect(
+      find.descendant(of: dialog, matching: find.text('4')),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+  });
 }
