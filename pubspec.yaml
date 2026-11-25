@@ -66,6 +66,7 @@ flutter:
   assets:
      - assets/data/food_dataset.json
      - assets/images/
+     - assets/images/Foodspots/
      - assets/images/Logo/tinider_icon.svg
 
   # An image asset can refer to one or more resolution-specific "variants", see

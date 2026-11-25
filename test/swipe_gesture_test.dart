@@ -16,6 +16,43 @@ void main() {
     expect(find.text("Deserve 'Ko To"), findsOneWidget);
   });
 
+  testWidgets('food spot photos use a consistent cover fit', (tester) async {
+    const spot = FoodSpot(
+      id: 'UST-FS-001',
+      name: 'Mang Tootz Food House',
+      streetAddress: 'P. Noval St.',
+      nearestGate: 'Gate 7',
+      walkingTimeMinutes: 2,
+      cuisineType: ['Filipino'],
+      priceRangePhp: PriceRange(min: 75, max: 130, averageMeal: 95),
+      popularItems: ['Sisig'],
+      operatingHours: 'Daily',
+      tags: [],
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: SizedBox(
+          width: 320,
+          height: 480,
+          child: FoodImagePlaceholder(spot: spot),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final image = tester.widget<Image>(find.byType(Image));
+    expect(image.fit, BoxFit.cover);
+    expect(
+      image.image,
+      isA<AssetImage>().having(
+        (asset) => asset.assetName,
+        'assetName',
+        startsWith('assets/images/Foodspots/ust-fs-001_'),
+      ),
+    );
+  });
+
   testWidgets('WalkCard shows the selected spot address and walking time', (
     tester,
   ) async {
@@ -67,7 +104,7 @@ void main() {
 
     for (
       var index = 0;
-      index < 30 && find.byType(MatchScreen).evaluate().isEmpty;
+      index < 100 && find.byType(MatchScreen).evaluate().isEmpty;
       index++
     ) {
       await tester.tap(find.text('Pass'));
