@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../services/room_service.dart';
+import '../services/firebase_group_session_service.dart';
 import '../theme/tinider_theme.dart';
 import '../widgets/tinider_widgets.dart';
 import 'swipe_screens.dart';
@@ -213,7 +213,8 @@ class RoomCodeScreen extends StatefulWidget {
 
 class _RoomCodeScreenState extends State<RoomCodeScreen> {
   final List<int> code = [];
-  final RoomService _roomService = RoomService();
+  final FirebaseGroupSessionService _roomService =
+      FirebaseGroupSessionService();
   bool _isBusy = false;
 
   void addDigit(int digit) {
@@ -225,17 +226,17 @@ class _RoomCodeScreenState extends State<RoomCodeScreen> {
     setState(() => _isBusy = true);
     final roomCode = code.map((digit) => digit.toString()).join();
     try {
-      final memberId = await _roomService.joinRoom(roomCode);
+      final session = await _roomService.joinRoom(roomCode);
       if (!mounted) return;
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => FoodSwipeScreen(
-            gate: widget.gate,
-            budget: widget.budget,
+            gate: session.gate,
+            budget: session.budget,
             isGroup: true,
-            roomCode: roomCode,
-            memberIds: [memberId],
+            roomCode: session.roomCode,
+            onlineMemberId: session.memberId,
           ),
         ),
       );
@@ -252,21 +253,20 @@ class _RoomCodeScreenState extends State<RoomCodeScreen> {
     if (_isBusy) return;
     setState(() => _isBusy = true);
     try {
-      final roomCode = await _roomService.createRoom(
+      final session = await _roomService.createRoom(
         gate: widget.gate,
         budget: widget.budget,
       );
-      final memberId = await _roomService.ensureIdentity();
       if (!mounted) return;
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => FoodSwipeScreen(
-            gate: widget.gate,
-            budget: widget.budget,
+            gate: session.gate,
+            budget: session.budget,
             isGroup: true,
-            roomCode: roomCode,
-            memberIds: [memberId],
+            roomCode: session.roomCode,
+            onlineMemberId: session.memberId,
           ),
         ),
       );
@@ -284,7 +284,7 @@ class _RoomCodeScreenState extends State<RoomCodeScreen> {
     return Scaffold(
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(32, 20, 32, 24),
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -312,28 +312,28 @@ class _RoomCodeScreenState extends State<RoomCodeScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 8),
               const Text(
                 'Room code',
                 style: TextStyle(
-                  fontSize: 40,
+                  fontSize: 36,
                   height: 1,
                   fontWeight: FontWeight.w900,
                   color: TiniderColors.brown,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               const Text(
                 'Ask your friend for the 4-digit code.',
                 style: TextStyle(fontSize: 20, color: TiniderColors.muted),
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 14),
               Row(
                 children: List.generate(4, (index) {
                   final filled = index < code.length;
                   return Expanded(
                     child: Container(
-                      height: 86,
+                      height: 56,
                       margin: const EdgeInsets.only(right: 10),
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
@@ -361,14 +361,14 @@ class _RoomCodeScreenState extends State<RoomCodeScreen> {
                   );
                 }),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 10),
               Expanded(
                 child: GridView.count(
                   physics: const NeverScrollableScrollPhysics(),
                   crossAxisCount: 3,
-                  mainAxisSpacing: 10,
-                  crossAxisSpacing: 10,
-                  childAspectRatio: 1.72,
+                  mainAxisSpacing: 6,
+                  crossAxisSpacing: 6,
+                  childAspectRatio: 2.5,
                   children: [
                     for (var i = 1; i <= 9; i++)
                       _KeypadButton(label: '$i', onTap: () => addDigit(i)),
@@ -379,7 +379,7 @@ class _RoomCodeScreenState extends State<RoomCodeScreen> {
                     ),
                     _KeypadButton(label: '0', onTap: () => addDigit(0)),
                     _KeypadButton(
-                      label: 'del',
+                      label: 'erase',
                       muted: true,
                       onTap: () {
                         if (code.isNotEmpty) {

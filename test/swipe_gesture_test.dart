@@ -104,10 +104,13 @@ void main() {
 
     await tester.drag(find.byType(FoodImagePlaceholder), const Offset(180, 0));
     await tester.pumpAndSettle();
+    expect(find.textContaining('3/'), findsOneWidget);
 
+    final progressText = tester.widget<Text>(find.textContaining('3/')).data!;
+    final totalCards = int.parse(progressText.split('/').last);
     for (
       var index = 0;
-      index < 100 && find.byType(MatchScreen).evaluate().isEmpty;
+      index < totalCards && find.byType(MatchScreen).evaluate().isEmpty;
       index++
     ) {
       await tester.tap(find.text('Pass'));
