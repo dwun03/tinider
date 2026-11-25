@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../controllers/food_swipe_controller.dart';
 import '../controllers/match_controller.dart';
 import '../models/foodspot.dart';
+import '../services/room_service.dart';
 import '../theme/tinider_theme.dart';
 import '../widgets/food_image_placeholder.dart';
 import '../widgets/tinider_widgets.dart';
@@ -33,9 +35,19 @@ class FoodSwipeScreen extends StatefulWidget {
 }
 
 class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
-  late final FoodSwipeController _controller;
-  bool _resultNavigationStarted = false;
+  final QuickMatchState _matchState = QuickMatchState();
+  final RoomService _roomService = RoomService();
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _roomSubscription;
+  int activeMemberIndex = 0;
+  List<FoodSpot> cards = [];
+  List<String> _memberIds = [];
+  Map<String, dynamic> _roomParticipants = {};
+  bool isLoading = true;
   double _dragOffset = 0;
+  bool _winnerHandled = false;
+
+  bool get _isOnlineRoom =>
+      widget.isGroup && widget.roomCode != null && widget.roomCode != 'OFFLINE';
 
   static const double _swipeDistanceThreshold = 100;
   static const double _swipeVelocityThreshold = 600;
@@ -56,22 +68,85 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
 
   @override
   void dispose() {
-    _controller.dispose();
+    _roomSubscription?.cancel();
+    _matchState.dispose();
     super.dispose();
   }
 
-  void _handleControllerChanged() {
-    if (!mounted) return;
-    setState(() {});
+  Future<void> _loadCards() async {
+    try {
+      await _matchState.loadDataset();
+      final loadError = _matchState.error;
+      if (loadError != null) {
+        throw StateError(loadError);
+      }
 
-    final errorMessage = _controller.takeErrorMessage();
-    if (errorMessage != null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(errorMessage)));
+      final budgetRange = switch (widget.budget) {
+        'Tipid' => (min: null, max: 99),
+        'Regular' => (min: 100, max: 180),
+        "Deserve 'Ko To" => (min: 181, max: null),
+        'Thrifty' => (min: null, max: 99),
+        'Special Treat' => (min: 181, max: null),
+        _ => (min: null, max: null),
+      };
+      _memberIds =
+          widget.memberIds ??
+          (widget.isGroup ? const ['you', 'friend'] : const ['you']);
+      if (_isOnlineRoom) {
+        final memberId = await _roomService.ensureIdentity();
+        _memberIds = [memberId];
+      }
+      _matchState.startGroupSession(
+        groupMemberIds: _memberIds,
+        minBudgetPhp: budgetRange.min,
+        maxBudgetPhp: budgetRange.max,
+        preferredGateKeyword: widget.gate,
+        shuffleDeck: false,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        cards = _matchState.sessionDeck;
+        isLoading = false;
+      });
+      if (_isOnlineRoom) {
+        _watchOnlineRoom();
+      }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not load food options: $error')),
+      );
     }
 
-    final match = _controller.matchedSpot;
-    if (match == null || _resultNavigationStarted) return;
+    if (_isOnlineRoom) {
+      final memberId = _memberIds[activeMemberIndex];
+      final cardIndex = _matchState.progressFor(memberId);
+      final currentCard = cards[cardIndex - 1];
+      _roomService.recordSwipe(
+        code: widget.roomCode!,
+        memberId: memberId,
+        spotId: currentCard.id,
+        direction: direction.name,
+        progress: cardIndex,
+        deckLength: cards.length,
+      );
+      setState(() {});
+      return;
+    }
+
+    if (!_matchState.isMemberDone(_memberIds[activeMemberIndex])) {
+      setState(() {});
+      return;
+    }
+
+    if (activeMemberIndex < _memberIds.length - 1) {
+      setState(() {
+        activeMemberIndex++;
+      });
+      return;
+    }
 
     _resultNavigationStarted = true;
     Navigator.pushReplacement(
@@ -79,6 +154,76 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
       MaterialPageRoute(
         builder: (_) =>
             MatchScreen(gate: widget.gate, group: widget.isGroup, spot: match),
+      ),
+    );
+  }
+
+  void _watchOnlineRoom() {
+    _roomSubscription = _roomService
+        .watchRoom(widget.roomCode!)
+        .listen(
+          (snapshot) async {
+            if (!snapshot.exists || _winnerHandled) return;
+            final data = snapshot.data()!;
+            final winnerId = data['winnerId'] as String?;
+            if (winnerId != null) {
+              _showOnlineWinner(winnerId);
+              return;
+            }
+
+            final participants = Map<String, dynamic>.from(
+              data['participants'] as Map? ?? {},
+            );
+            if (mounted) {
+              setState(() => _roomParticipants = participants);
+            }
+            if (participants.isEmpty) return;
+            final allFinished = participants.values.every(
+              (participant) =>
+                  participant is Map && participant['finished'] == true,
+            );
+            if (!allFinished) return;
+
+            final winner = await _roomService.finalizeWinner(
+              widget.roomCode!,
+              cards.map((spot) => spot.id).toList(),
+            );
+            if (winner != null) _showOnlineWinner(winner);
+          },
+          onError: (error) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Room sync error: $error')));
+          },
+        );
+  }
+
+  void _showOnlineWinner(String spotId) {
+    if (!mounted || _winnerHandled) return;
+    FoodSpot? spot;
+    for (final item in cards) {
+      if (item.id == spotId) {
+        spot = item;
+        break;
+      }
+    }
+    if (spot == null) {
+      for (final item in _matchState.allSpots) {
+        if (item.id == spotId) {
+          spot = item;
+          break;
+        }
+      }
+    }
+    if (spot == null) return;
+    final matchedSpot = spot;
+    _winnerHandled = true;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            MatchScreen(gate: widget.gate, group: true, spot: matchedSpot),
       ),
     );
   }
@@ -189,8 +334,12 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
       );
     }
 
-    final card = _controller.currentCard!;
-    final progress = _controller.currentProgress;
+    final memberId = _memberIds[activeMemberIndex];
+    if (_isOnlineRoom && _matchState.isMemberDone(memberId)) {
+      return _buildWaitingScreen(memberId);
+    }
+    final card = _matchState.currentCardFor(memberId)!;
+    final progress = _matchState.progressFor(memberId) + 1;
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -394,6 +543,120 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
                     ),
                   ),
                 ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWaitingScreen(String memberId) {
+    final participants = _roomParticipants.entries.toList();
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(32, 20, 32, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const TiniderBackButton(),
+                  const Spacer(),
+                  TiniderContextPill('Group · Room ${widget.roomCode}'),
+                ],
+              ),
+              const SizedBox(height: 48),
+              const Icon(
+                Icons.hourglass_top_rounded,
+                size: 64,
+                color: TiniderColors.yellow,
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                "You're all done!",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w900,
+                  color: TiniderColors.brown,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Waiting for the other players to finish swiping.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 17, color: TiniderColors.muted),
+              ),
+              const SizedBox(height: 28),
+              const Text(
+                'Players',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: TiniderColors.brown,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: participants.isEmpty
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: TiniderColors.yellow,
+                        ),
+                      )
+                    : ListView.separated(
+                        itemCount: participants.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 8),
+                        itemBuilder: (context, index) {
+                          final participant = participants[index];
+                          final data = participant.value is Map
+                              ? Map<String, dynamic>.from(
+                                  participant.value as Map,
+                                )
+                              : const <String, dynamic>{};
+                          final finished = data['finished'] == true;
+                          final progress = data['progress'] as int? ?? 0;
+                          final isCurrentPlayer = participant.key == memberId;
+                          return Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: TiniderColors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: TiniderColors.brown),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    isCurrentPlayer
+                                        ? 'You'
+                                        : 'Player ${index + 1}',
+                                    style: const TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w800,
+                                      color: TiniderColors.brown,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  finished
+                                      ? 'Finished'
+                                      : '$progress/${cards.length}',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: finished
+                                        ? TiniderColors.brown
+                                        : TiniderColors.muted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
               ),
             ],
           ),
@@ -755,13 +1018,10 @@ class WalkCardScreen extends StatelessWidget {
                       number: '1',
                       text: 'Exit through the gate',
                     ),
-                    const _DirectionRow(
+                    _DirectionRow(
                       number: '2',
-                      text: 'Walk straight along P. Noval St · 150 m',
-                    ),
-                    const _DirectionRow(
-                      number: '3',
-                      text: 'Turn right at the jeepney stop',
+                      text:
+                          '${spot.streetAddress} · ${spot.walkingTimeMinutes} min walk',
                     ),
                     const SizedBox(height: 12),
                     Row(
@@ -775,8 +1035,8 @@ class WalkCardScreen extends StatelessWidget {
                         SizedBox(width: 10),
                         Expanded(
                           child: _WalkInfo(
-                            title: 'Landmarks',
-                            value: 'Jeepney stop\nCorner bakery',
+                            title: 'Address',
+                            value: spot.streetAddress,
                           ),
                         ),
                       ],

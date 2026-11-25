@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/foodspot.dart';
 import '../theme/tinider_theme.dart';
@@ -7,6 +8,17 @@ class FoodImagePlaceholder extends StatelessWidget {
   final FoodSpot spot;
 
   const FoodImagePlaceholder({super.key, required this.spot});
+
+  static const _foodspotsDirectory = 'assets/images/Foodspots/';
+  static final Future<Map<String, String>> _imagePaths =
+      AssetManifest.loadFromAssetBundle(rootBundle).then((manifest) {
+        return {
+          for (final assetPath in manifest.listAssets())
+            if (assetPath.startsWith(_foodspotsDirectory))
+              assetPath.substring(_foodspotsDirectory.length).split('_').first:
+                  assetPath,
+        };
+      });
 
   static const _backgrounds = [
     TiniderColors.yellow,
@@ -38,6 +50,26 @@ class FoodImagePlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return FutureBuilder<String?>(
+      future: _imagePaths.then((paths) => paths[spot.id.toLowerCase()]),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return ErrorWidget(snapshot.error!);
+        }
+
+        final imagePath = snapshot.data;
+        if (imagePath != null) {
+          return SizedBox.expand(
+            child: Image.asset(imagePath, fit: BoxFit.cover),
+          );
+        }
+
+        return _buildPlaceholder();
+      },
+    );
+  }
+
+  Widget _buildPlaceholder() {
     return Container(
       width: double.infinity,
       color: _backgroundColor,
