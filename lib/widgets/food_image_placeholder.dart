@@ -10,7 +10,7 @@ class FoodImagePlaceholder extends StatelessWidget {
   const FoodImagePlaceholder({super.key, required this.spot});
 
   static const _foodspotsDirectory = 'assets/images/Foodspots/';
-  static final Future> _imagePaths =
+  static final Future<Map<String, String>> _imagePaths =
       AssetManifest.loadFromAssetBundle(rootBundle).then((manifest) {
         return {
           for (final assetPath in manifest.listAssets())

@@ -64,7 +64,7 @@ class SavedSpotsService {
     return user.uid;
   }
 
-  CollectionReference> _collectionFor(String uid) {
+  CollectionReference<Map<String, dynamic>> _collectionFor(String uid) {
     return FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
