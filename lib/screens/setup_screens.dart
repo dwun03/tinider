@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/tinider_theme.dart';
 import '../widgets/tinider_widgets.dart';
 import 'group_screens.dart';
+import 'saved_spots_screen.dart';
 import 'swipe_screens.dart';
 
 class SplashScreen extends StatelessWidget {
@@ -205,14 +206,63 @@ class _WhereAtScreenState extends State<WhereAtScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Where at?',
-                style: TextStyle(
-                  fontSize: 40,
-                  height: 1,
-                  fontWeight: FontWeight.w900,
-                  color: TiniderColors.brown,
-                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Where at?',
+                      style: TextStyle(
+                        fontSize: 40,
+                        height: 1,
+                        fontWeight: FontWeight.w900,
+                        color: TiniderColors.brown,
+                      ),
+                    ),
+                  ),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(24),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const SavedSpotsScreen(),
+                      ),
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 9,
+                      ),
+                      decoration: BoxDecoration(
+                        color: TiniderColors.yellow,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: TiniderColors.brown,
+                          width: 2.5,
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.bookmark_border,
+                            size: 18,
+                            color: TiniderColors.brown,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            'Saved',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                              color: TiniderColors.brown,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 8),
               const Text(

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../services/saved_spots_service.dart';
 import '../controllers/food_swipe_controller.dart';
 import '../controllers/match_controller.dart';
 import '../models/foodspot.dart';
@@ -239,11 +240,16 @@ class _FoodSwipeScreenState extends State<FoodSwipeScreen> {
               Row(
                 children: [
                   const TiniderBackButton(),
-                  const Spacer(),
-                  TiniderContextPill(
-                    widget.isGroup
-                        ? 'Group · Room ${widget.roomCode ?? '4271'}'
-                        : 'Solo · ${widget.gate} · ${widget.budget}',
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: TiniderContextPill(
+                        widget.isGroup
+                            ? 'Group · Room ${widget.roomCode ?? '4271'}'
+                            : 'Solo · ${widget.gate} · ${widget.budget}',
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -686,14 +692,55 @@ class MatchScreen extends StatelessWidget {
   }
 }
 
-class WalkCardScreen extends StatelessWidget {
+class WalkCardScreen extends StatefulWidget {
   final String gate;
   final FoodSpot spot;
 
   const WalkCardScreen({super.key, required this.gate, required this.spot});
 
   @override
+  State<WalkCardScreen> createState() => _WalkCardScreenState();
+}
+
+class _WalkCardScreenState extends State<WalkCardScreen> {
+  final SavedSpotsService _savedSpotsService = SavedSpotsService();
+  bool _isSaving = false;
+  bool _isSaved = false;
+
+  Future<void> _saveWalkCard() async {
+    if (_isSaving || _isSaved) return;
+    setState(() => _isSaving = true);
+    try {
+      await _savedSpotsService.saveSpot(
+        spot: widget.spot,
+        gate: widget.gate,
+      );
+      if (!mounted) return;
+      setState(() => _isSaved = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Saved to your spots!')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      final message = error is TimeoutException
+          ? 'Connection timed out. Connect to the internet to sync saved spots.'
+          : error.toString().replaceFirst(
+              RegExp(r'^(Bad state|Invalid argument\(s\)|Exception):\s*'),
+              '',
+            );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final spot = widget.spot;
+    final gate = widget.gate;
+
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -704,23 +751,33 @@ class WalkCardScreen extends StatelessWidget {
               Row(
                 children: [
                   const TiniderBackButton(),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: TiniderColors.cream,
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(color: TiniderColors.brown, width: 2),
-                    ),
-                    child: const Text(
-                      'WalkCard · saved offline',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: TiniderColors.brown,
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: TiniderColors.cream,
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(
+                            color: TiniderColors.brown,
+                            width: 2,
+                          ),
+                        ),
+                        child: const Text(
+                          'WalkCard · saved offline',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: TiniderColors.brown,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -808,7 +865,7 @@ class WalkCardScreen extends StatelessWidget {
                             value: spot.operatingHours,
                           ),
                         ),
-                        SizedBox(width: 10),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: _WalkInfo(
                             title: 'Address',
@@ -820,7 +877,41 @@ class WalkCardScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: OutlinedButton.icon(
+                  onPressed: _isSaving || _isSaved ? null : _saveWalkCard,
+                  icon: Icon(
+                    _isSaved ? Icons.bookmark : Icons.bookmark_add_outlined,
+                    color: TiniderColors.brown,
+                  ),
+                  label: Text(
+                    _isSaved
+                        ? 'Saved WalkCard ✓'
+                        : (_isSaving ? 'Saving...' : 'Save WalkCard'),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: TiniderColors.brown,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: _isSaved
+                        ? TiniderColors.mint
+                        : TiniderColors.white,
+                    side: const BorderSide(
+                      color: TiniderColors.brown,
+                      width: 3,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
               TiniderPrimaryButton(
                 label: 'Done',
                 onPressed: () {
