@@ -37,6 +37,26 @@ void main() {
     );
   });
 
+  test('deduplicates repeated spots from the JSON dataset', () {
+    expect(state.allSpots.length, 74);
+    expect(
+      state.allSpots.map((spot) => spot.id).toSet().length,
+      state.allSpots.length,
+    );
+
+    state.startGroupSession(
+      groupMemberIds: const ['solo'],
+      preferredGateKeyword: 'Dapitan',
+      maxBudgetPhp: 99,
+      shuffleDeck: false,
+    );
+
+    expect(
+      state.sessionDeck.map((spot) => spot.id).toSet().length,
+      state.sessionDeck.length,
+    );
+  });
+
   test('ranks votes and identifies unanimous matches', () {
     state.startGroupSession(
       groupMemberIds: const ['alice', 'bob'],

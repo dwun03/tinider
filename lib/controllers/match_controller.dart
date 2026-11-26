@@ -57,9 +57,12 @@ class QuickMatchState extends ChangeNotifier {
       final Map<String, dynamic> decoded = json.decode(rawJson);
       final List<dynamic> spotsJson = decoded['food_spots'] as List<dynamic>;
 
-      _allSpots = spotsJson
-          .map((item) => FoodSpot.fromJson(item as Map<String, dynamic>))
-          .toList();
+      final uniqueSpots = <String, FoodSpot>{};
+      for (final item in spotsJson) {
+        final spot = FoodSpot.fromJson(item as Map<String, dynamic>);
+        uniqueSpots.putIfAbsent(spot.id, () => spot);
+      }
+      _allSpots = uniqueSpots.values.toList();
     } catch (e) {
       _error = 'Failed to parse UST food spots dataset: $e';
     } finally {
