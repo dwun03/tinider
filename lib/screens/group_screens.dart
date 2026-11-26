@@ -243,14 +243,14 @@ class _RoomCodeScreenState extends State<RoomCodeScreen> {
   }
 
   String _friendlyRoomError(Object error) {
-      if (error is TimeoutException) {
-        return 'Connection timed out. Check your internet or use Pass the phone mode offline.';
-      }
-      return error.toString().replaceFirst(
-        RegExp(r'^(Bad state|Invalid argument\(s\)|Exception):\s*'),
-        '',
-      );
+    if (error is TimeoutException) {
+      return 'Connection timed out. Check your internet or use Pass the phone mode offline.';
     }
+    return error.toString().replaceFirst(
+      RegExp(r'^(Bad state|Invalid argument\(s\)|Exception):\s*'),
+      '',
+    );
+  }
 
   Future<void> _joinRoom() async {
     if (_isBusy || code.length != 4) return;
