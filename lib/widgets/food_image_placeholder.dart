@@ -73,57 +73,68 @@ class FoodImagePlaceholder extends StatelessWidget {
     return Container(
       width: double.infinity,
       color: _backgroundColor,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            width: 220,
-            height: 220,
-            decoration: BoxDecoration(
-              color: TiniderColors.cream.withValues(alpha: 0.55),
-              shape: BoxShape.circle,
-            ),
-          ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
+      padding: const EdgeInsets.all(16),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: SizedBox(
+          width: 260,
+          child: Stack(
+            alignment: Alignment.center,
             children: [
               Container(
-                width: 110,
-                height: 110,
-                decoration: const BoxDecoration(
-                  color: TiniderColors.cream,
+                width: 220,
+                height: 220,
+                decoration: BoxDecoration(
+                  color: TiniderColors.cream.withValues(alpha: 0.55),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(_cuisineIcon, size: 60, color: TiniderColors.brown),
               ),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Text(
-                  spot.name.replaceAll(RegExp(r' \(.+\)$'), ''),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    color: TiniderColors.brown,
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 110,
+                    height: 110,
+                    decoration: const BoxDecoration(
+                      color: TiniderColors.cream,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      _cuisineIcon,
+                      size: 60,
+                      color: TiniderColors.brown,
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Photo coming soon',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: TiniderColors.muted,
-                ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Text(
+                      spot.name.replaceAll(RegExp(r' \(.+\)$'), ''),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: TiniderColors.brown,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Photo coming soon',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: TiniderColors.muted,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
-}
+  

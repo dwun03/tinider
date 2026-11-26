@@ -117,6 +117,8 @@ class TiniderContextPill extends StatelessWidget {
       ),
       child: Text(
         label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: const TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.w800,

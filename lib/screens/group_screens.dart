@@ -29,8 +29,13 @@ class GroupChoiceScreen extends StatelessWidget {
               Row(
                 children: [
                   const TiniderBackButton(),
-                  const Spacer(),
-                  TiniderContextPill('$gate · $budget'),
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: TiniderContextPill('$gate · $budget'),
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 28),
@@ -48,35 +53,49 @@ class GroupChoiceScreen extends StatelessWidget {
                 'How will you swipe?',
                 style: TextStyle(fontSize: 20, color: TiniderColors.muted),
               ),
-              const Spacer(),
-              _GroupModeCard(
-                title: 'Online',
-                subtitle: 'Needs internet',
-                description: 'Enter a 4-digit room code. Everyone swipes on their own phone.',
-                buttonText: 'Enter room code',
-                needsInternet: true,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => RoomCodeScreen(gate: gate, budget: budget),
+              const SizedBox(height: 16),
+              Expanded(
+                child: Center(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _GroupModeCard(
+                          title: 'Online',
+                          subtitle: 'Needs internet',
+                          description:
+                              'Enter a 4-digit room code. Everyone swipes on their own phone.',
+                          buttonText: 'Enter room code',
+                          needsInternet: true,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  RoomCodeScreen(gate: gate, budget: budget),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        _GroupModeCard(
+                          title: 'Pass the\nphone',
+                          subtitle: 'Works offline',
+                          description:
+                              'One phone only. Take turns swiping, then hand it to the next person.',
+                          buttonText: 'Start passing',
+                          needsInternet: false,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  PassPhoneScreen(gate: gate, budget: budget),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(height: 18),
-              _GroupModeCard(
-                title: 'Pass the\nphone',
-                subtitle: 'Works offline',
-                description: 'One phone only. Take turns swiping, then hand it to the next person.',
-                buttonText: 'Start passing',
-                needsInternet: false,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => PassPhoneScreen(gate: gate, budget: budget),
-                  ),
-                ),
-              ),
-              const Spacer(),
             ],
           ),
         ),
@@ -223,12 +242,24 @@ class _RoomCodeScreenState extends State<RoomCodeScreen> {
     if (code.length < 4) setState(() => code.add(digit));
   }
 
+  String _friendlyRoomError(Object error) {
+      if (error is TimeoutException) {
+        return 'Connection timed out. Check your internet or use Pass the phone mode offline.';
+      }
+      return error.toString().replaceFirst(
+        RegExp(r'^(Bad state|Invalid argument\(s\)|Exception):\s*'),
+        '',
+      );
+    }
+
   Future<void> _joinRoom() async {
     if (_isBusy || code.length != 4) return;
     setState(() => _isBusy = true);
     final roomCode = code.map((digit) => digit.toString()).join();
     try {
-      final session = await _roomService.joinRoom(roomCode);
+      final session = await _roomService
+          .joinRoom(roomCode)
+          .timeout(const Duration(seconds: 8));
       if (!mounted) return;
       Navigator.push(
         context,
@@ -238,8 +269,9 @@ class _RoomCodeScreenState extends State<RoomCodeScreen> {
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_friendlyRoomError(error))));
     } finally {
       if (mounted) setState(() => _isBusy = false);
     }
@@ -252,11 +284,13 @@ class _RoomCodeScreenState extends State<RoomCodeScreen> {
       final expectedPlayers = await _chooseExpectedPlayers();
       if (expectedPlayers == null || !mounted) return;
 
-      final session = await _roomService.createRoom(
-        gate: widget.gate,
-        budget: widget.budget,
-        expectedPlayers: expectedPlayers,
-      );
+      final session = await _roomService
+          .createRoom(
+            gate: widget.gate,
+            budget: widget.budget,
+            expectedPlayers: expectedPlayers,
+          )
+          .timeout(const Duration(seconds: 8));
       if (!mounted) return;
       Navigator.push(
         context,
@@ -266,8 +300,9 @@ class _RoomCodeScreenState extends State<RoomCodeScreen> {
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_friendlyRoomError(error))));
     } finally {
       if (mounted) setState(() => _isBusy = false);
     }
