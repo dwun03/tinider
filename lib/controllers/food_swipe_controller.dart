@@ -74,7 +74,7 @@ class FoodSwipeController extends ChangeNotifier {
       final budgetRange = switch (budget) {
         'Thrifty' || 'Tipid' => (min: null, max: 99),
         'Regular' => (min: 100, max: 180),
-        'Special Treat' => (min: 181, max: null),
+        'Special Treat' || "Deserve 'Ko To" => (min: 181, max: null),
         _ => (min: null, max: null),
       };
       if (isOnlineGroup) {

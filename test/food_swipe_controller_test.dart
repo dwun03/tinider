@@ -16,4 +16,17 @@ void main() {
       isTrue,
     );
   });
+
+  test("Deserve 'Ko To filters food spots to meals costing at least ₱181", () async {
+    final controller = FoodSwipeController(gate: '', budget: "Deserve 'Ko To");
+    addTearDown(controller.dispose);
+
+    await controller.loadCards();
+
+    expect(controller.cards, isNotEmpty);
+    expect(
+      controller.cards.every((spot) => spot.priceRangePhp.averageMeal >= 181),
+      isTrue,
+    );
+  });
 }
