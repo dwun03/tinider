@@ -26,6 +26,22 @@ service cloud.firestore {
         && expectedPlayers <= 8;
     }
 
+    match /users/{userId}/savedSpots/{spotId} {
+      allow read, delete: if signedIn() && request.auth.uid == userId;
+      allow create, update: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.spotId == spotId
+        && request.resource.data.name is string
+        && request.resource.data.gate is string
+        && request.resource.data.streetAddress is string
+        && request.resource.data.walkingTimeMinutes is int
+        && request.resource.data.averageMealPhp is int
+        && request.resource.data.operatingHours is string
+        && request.resource.data.note is string
+        && request.resource.data.note.size() <= 120
+        && request.resource.data.visited is bool;
+    }
+
     match /groupRooms/{roomCode} {
       allow create: if signedIn()
         && request.resource.data.keys().hasOnly([
