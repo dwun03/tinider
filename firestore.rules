@@ -30,6 +30,18 @@ service cloud.firestore {
       allow read, delete: if signedIn() && request.auth.uid == userId;
       allow create, update: if signedIn()
         && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly([
+          'spotId',
+          'name',
+          'gate',
+          'streetAddress',
+          'walkingTimeMinutes',
+          'averageMealPhp',
+          'operatingHours',
+          'note',
+          'visited',
+          'updatedAt'
+        ])
         && request.resource.data.spotId == spotId
         && request.resource.data.name is string
         && request.resource.data.gate is string
@@ -148,6 +160,7 @@ service cloud.firestore {
 
         allow update: if isRoomMember(roomCode)
           && request.auth.uid == memberUid
+          && get(roomPath(roomCode)).data.status == 'swiping'
           && !resource.data.completed
           && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['progress', 'completed', 'completedAt', 'updatedAt'])
@@ -165,6 +178,7 @@ service cloud.firestore {
         allow read: if isRoomMember(roomCode);
 
         allow create, update: if isRoomMember(roomCode)
+          && get(roomPath(roomCode)).data.status == 'swiping'
           && request.auth.uid == request.resource.data.memberUid
           && request.resource.data.spotId is string
           && voteId == request.auth.uid + '_' + request.resource.data.spotId

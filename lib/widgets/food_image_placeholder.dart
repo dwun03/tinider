@@ -137,4 +137,4 @@ class FoodImagePlaceholder extends StatelessWidget {
       ),
     );
   }
-  
+}
